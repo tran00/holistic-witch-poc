@@ -1,8 +1,11 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'openai_client.dart';
 import 'widgets/chat_bubble.dart';
-import 'form_page.dart';
+import 'numerologie.dart';
+import 'three_card_draw_page.dart';
+import 'widgets/app_drawer.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,7 +27,8 @@ class MyApp extends StatelessWidget {
       routes: {
         '/': (context) => const HomePage(),
         '/chat': (context) => const ChatPage(),
-        '/form': (context) => const FormPage(),
+        '/tirage3': (context) => const ThreeCardDrawPage(),
+        '/numerologie': (context) => const NumerologiePage(),
       },
     );
   }
@@ -37,31 +41,36 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Menu')),
-      drawer: Drawer(
-        child: ListView(
+      drawer: const AppDrawer(),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const DrawerHeader(
-              child: Text('Menu', style: TextStyle(fontSize: 24)),
-            ),
-            ListTile(
-              leading: const Icon(Icons.chat),
-              title: const Text('Chat with OpenAI'),
-              onTap: () {
-                Navigator.pushReplacementNamed(context, '/chat');
+            ElevatedButton.icon(
+              icon: const Icon(Icons.chat),
+              label: const Text('Go to Chat'),
+              onPressed: () {
+                Navigator.pushNamed(context, '/chat');
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.list),
-              title: const Text('Form Page'),
-              onTap: () {
-                Navigator.pushReplacementNamed(context, '/form');
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.star),
+              label: const Text('Tirage 3 cartes conseil'),
+              onPressed: () {
+                Navigator.pushNamed(context, '/tirage3');
+              },
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.calculate),
+              label: const Text('Numerologie'),
+              onPressed: () {
+                Navigator.pushNamed(context, '/numerologie');
               },
             ),
           ],
         ),
-      ),
-      body: const Center(
-        child: Text('Select a page from the menu.'),
       ),
     );
   }
@@ -133,7 +142,18 @@ class _ChatPageState extends State<ChatPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('OpenAI Chat')),
+      appBar: AppBar(
+        title: const Text('OpenAI Chat'),
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () {
+              Scaffold.of(context).openDrawer();
+            },
+          ),
+        ),
+      ),
+      drawer: const AppDrawer(),
       body: Column(
         children: [
           Expanded(
@@ -170,6 +190,6 @@ class _ChatPageState extends State<ChatPage> {
           ),
         ],
       ),
-    );
+    );  
   }
 }
