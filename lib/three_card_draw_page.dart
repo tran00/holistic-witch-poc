@@ -30,6 +30,7 @@ class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> {
   bool isLoading = false;
   bool isBonusLoading = false;
   late final OpenAIClient _openAI;
+  int revealedCards = 0;
 
   @override
   void initState() {
@@ -53,7 +54,19 @@ class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> {
       prompt = null;
       bonusPrompt = null;
       bonusOpenAIAnswer = null;
+      revealedCards = 0;
     });
+    revealCardsOneByOne();
+  }
+
+  void revealCardsOneByOne() async {
+    for (int i = 1; i <= 3; i++) {
+      await Future.delayed(const Duration(milliseconds: 600));
+      if (!mounted) return;
+      setState(() {
+        revealedCards = i;
+      });
+    }
   }
 
   void drawBonusCards() {
@@ -165,19 +178,13 @@ class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> {
               if (drawnCards != null)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: drawnCards!
-                      .map((card) => Card(
-                            margin: const EdgeInsets.symmetric(horizontal: 8),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: SelectableText(
-                                card,
-                                style: const TextStyle(
-                                    fontSize: 18, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ))
-                      .toList(),
+                  children: List.generate(
+                    3,
+                    (index) => RevealTarotCard(
+                      revealed: revealedCards > index,
+                      cardName: drawnCards![index],
+                    ),
+                  ),
                 ),
               if (drawnCards != null) ...[
                 const SizedBox(height: 24),
@@ -319,6 +326,43 @@ class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class RevealTarotCard extends StatelessWidget {
+  final bool revealed;
+  final String cardName;
+  const RevealTarotCard({super.key, required this.revealed, required this.cardName});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 500),
+      transitionBuilder: (child, animation) {
+        return FadeTransition(opacity: animation, child: child);
+      },
+      child: revealed
+          ? Card(
+              key: const ValueKey('front'),
+              margin: const EdgeInsets.symmetric(horizontal: 8),
+              child: SizedBox(
+                width: 160,
+                height: 140,
+                child: Center(
+                  child: SelectableText(
+                    cardName,
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            )
+          : SizedBox(
+              key: const ValueKey('empty'),
+              width: 160,
+              height: 140,
+            ),
     );
   }
 }

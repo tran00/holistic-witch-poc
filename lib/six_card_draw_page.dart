@@ -46,7 +46,19 @@ class _SixCardDrawPageState extends State<SixCardDrawPage> {
       drawnCards = deck.take(6).toList();
       openAIAnswer = null;
       prompt = null;
+      revealedCards = 0; // <-- reset revealed cards
     });
+    revealCardsOneByOne(); // <-- start reveal animation
+  }
+
+  void revealCardsOneByOne() async {
+    for (int i = 1; i <= 6; i++) {
+      await Future.delayed(const Duration(milliseconds: 600));
+      if (!mounted) return;
+      setState(() {
+        revealedCards = i;
+      });
+    }
   }
 
   Future<void> askOpenAI() async {
@@ -86,6 +98,8 @@ class _SixCardDrawPageState extends State<SixCardDrawPage> {
     }
   }
 
+  int revealedCards = 0;
+
   Widget _pyramidLayout(List<String> cards) {
     // cards[0]=1, cards[1]=2, cards[2]=3, cards[3]=4, cards[4]=5, cards[5]=6
     return Column(
@@ -95,13 +109,17 @@ class _SixCardDrawPageState extends State<SixCardDrawPage> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Card(
-              margin: const EdgeInsets.all(8),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: SelectableText(
-                  cards[5],
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            AnimatedOpacity(
+              opacity: (revealedCards > 5) ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 500),
+              child: Card(
+                margin: const EdgeInsets.all(8),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: SelectableText(
+                    cards[5],
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
             ),
@@ -111,23 +129,31 @@ class _SixCardDrawPageState extends State<SixCardDrawPage> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Card(
-              margin: const EdgeInsets.all(8),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: SelectableText(
-                  cards[3],
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            AnimatedOpacity(
+              opacity: (revealedCards > 3) ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 500),
+              child: Card(
+                margin: const EdgeInsets.all(8),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: SelectableText(
+                    cards[3],
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
             ),
-            Card(
-              margin: const EdgeInsets.all(8),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: SelectableText(
-                  cards[4],
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            AnimatedOpacity(
+              opacity: (revealedCards > 4) ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 500),
+              child: Card(
+                margin: const EdgeInsets.all(8),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: SelectableText(
+                    cards[4],
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
             ),
@@ -137,33 +163,45 @@ class _SixCardDrawPageState extends State<SixCardDrawPage> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Card(
-              margin: const EdgeInsets.all(8),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: SelectableText(
-                  cards[0],
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            AnimatedOpacity(
+              opacity: (revealedCards > 0) ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 500),
+              child: Card(
+                margin: const EdgeInsets.all(8),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: SelectableText(
+                    cards[0],
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
             ),
-            Card(
-              margin: const EdgeInsets.all(8),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: SelectableText(
-                  cards[2],
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            AnimatedOpacity(
+              opacity: (revealedCards > 2) ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 500),
+              child: Card(
+                margin: const EdgeInsets.all(8),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: SelectableText(
+                    cards[2],
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
             ),
-            Card(
-              margin: const EdgeInsets.all(8),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: SelectableText(
-                  cards[1],
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            AnimatedOpacity(
+              opacity: (revealedCards > 1) ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 500),
+              child: Card(
+                margin: const EdgeInsets.all(8),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: SelectableText(
+                    cards[1],
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
             ),

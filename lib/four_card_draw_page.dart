@@ -30,6 +30,7 @@ class _FourCardDrawPageState extends State<FourCardDrawPage> {
   bool isLoading = false;
   bool isBonusLoading = false;
   late final OpenAIClient _openAI;
+  int revealedCards = 0;
 
   @override
   void initState() {
@@ -53,7 +54,9 @@ class _FourCardDrawPageState extends State<FourCardDrawPage> {
       prompt = null;
       bonusPrompt = null;
       bonusOpenAIAnswer = null;
+      revealedCards = 0;
     });
+    revealCardsOneByOne();
   }
 
   void drawBonusCards() {
@@ -140,6 +143,16 @@ class _FourCardDrawPageState extends State<FourCardDrawPage> {
     }
   }
 
+  void revealCardsOneByOne() async {
+    for (int i = 1; i <= 4; i++) {
+      await Future.delayed(const Duration(milliseconds: 600));
+      if (!mounted) return;
+      setState(() {
+        revealedCards = i;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -151,7 +164,7 @@ class _FourCardDrawPageState extends State<FourCardDrawPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(height: 21), // for top space (adjust as needed)
+              const SizedBox(height: 21),
               TextField(
                 controller: _questionController,
                 decoration: const InputDecoration(
@@ -167,7 +180,7 @@ class _FourCardDrawPageState extends State<FourCardDrawPage> {
               const SizedBox(height: 24),
               if (drawnCards != null)
                 SizedBox(
-                  width: 300,
+                  width: 600, // much wider container
                   height: 220,
                   child: Stack(
                     alignment: Alignment.center,
@@ -175,13 +188,23 @@ class _FourCardDrawPageState extends State<FourCardDrawPage> {
                       // Card 1 (left)
                       Positioned(
                         top: 60,
-                        left: 0,
-                        child: Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: SelectableText(
-                              drawnCards![0],
-                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        left: 40, // more space from the left
+                        child: AnimatedOpacity(
+                          opacity: (revealedCards > 0) ? 1.0 : 0.0,
+                          duration: const Duration(milliseconds: 500),
+                          child: Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: SizedBox(
+                                width: 160,
+                                height: 48,
+                                child: Center(
+                                  child: SelectableText(
+                                    drawnCards![0],
+                                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -189,13 +212,23 @@ class _FourCardDrawPageState extends State<FourCardDrawPage> {
                       // Card 2 (right)
                       Positioned(
                         top: 60,
-                        right: 0,
-                        child: Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: SelectableText(
-                              drawnCards![1],
-                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        right: 40, // more space from the right
+                        child: AnimatedOpacity(
+                          opacity: (revealedCards > 1) ? 1.0 : 0.0,
+                          duration: const Duration(milliseconds: 500),
+                          child: Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: SizedBox(
+                                width: 160,
+                                height: 48,
+                                child: Center(
+                                  child: SelectableText(
+                                    drawnCards![1],
+                                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -203,13 +236,23 @@ class _FourCardDrawPageState extends State<FourCardDrawPage> {
                       // Card 3 (center top)
                       Positioned(
                         top: 0,
-                        left: 90,
-                        child: Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: SelectableText(
-                              drawnCards![2],
-                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        left: 220, // center with new width
+                        child: AnimatedOpacity(
+                          opacity: (revealedCards > 2) ? 1.0 : 0.0,
+                          duration: const Duration(milliseconds: 500),
+                          child: Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: SizedBox(
+                                width: 160,
+                                height: 48,
+                                child: Center(
+                                  child: SelectableText(
+                                    drawnCards![2],
+                                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -217,13 +260,23 @@ class _FourCardDrawPageState extends State<FourCardDrawPage> {
                       // Card 4 (center bottom)
                       Positioned(
                         bottom: 0,
-                        left: 90,
-                        child: Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: SelectableText(
-                              drawnCards![3],
-                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        left: 220, // center with new width
+                        child: AnimatedOpacity(
+                          opacity: (revealedCards > 3) ? 1.0 : 0.0,
+                          duration: const Duration(milliseconds: 500),
+                          child: Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: SizedBox(
+                                width: 160,
+                                height: 48,
+                                child: Center(
+                                  child: SelectableText(
+                                    drawnCards![3],
+                                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -238,7 +291,7 @@ class _FourCardDrawPageState extends State<FourCardDrawPage> {
                   child: const Text('demander à openAI'),
                 ),
                 if (prompt != null) ...[
-                  const SizedBox(height: 32), // <-- 32px margin before prompt label
+                  const SizedBox(height: 32),
                   const SelectableText(
                     'Prompt envoyé à OpenAI :',
                     style: TextStyle(fontWeight: FontWeight.bold),
@@ -304,7 +357,7 @@ class _FourCardDrawPageState extends State<FourCardDrawPage> {
                           child: const Text('demander à openAI (bonus)'),
                         ),
                         if (bonusPrompt != null) ...[
-                          const SizedBox(height: 32), // <-- 32px margin before bonus prompt label
+                          const SizedBox(height: 32),
                           const SelectableText(
                             'Prompt envoyé à OpenAI (bonus) :',
                             style: TextStyle(fontWeight: FontWeight.bold),
