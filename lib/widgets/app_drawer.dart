@@ -26,6 +26,27 @@ class AppDrawer extends StatelessWidget {
             },
           ),
           ListTile(
+            leading: const Icon(Icons.auto_awesome),
+            title: const Text('Tirage 3 cartes conseil'),
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/tirage3');
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.auto_awesome),
+            title: const Text('Tirage 4 cartes prédictif'),
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/tirage4');
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.account_tree),
+            title: const Text('Tirage 6 cartes pyramide'),
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/tirage6');
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.list),
             title: const Text('Numerologie'),
             onTap: () {
@@ -33,10 +54,10 @@ class AppDrawer extends StatelessWidget {
             },
           ),
           ListTile(
-            leading: const Icon(Icons.auto_awesome),
-            title: const Text('Tirage 3 cartes conseil'),
+            leading: const Icon(Icons.star),
+            title: const Text('Thème natal'),
             onTap: () {
-              Navigator.pushReplacementNamed(context, '/tirage3');
+              Navigator.pushReplacementNamed(context, '/natal');
             },
           ),
         ],

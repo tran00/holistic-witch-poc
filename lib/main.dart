@@ -1,11 +1,13 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'openai_client.dart';
 import 'widgets/chat_bubble.dart';
 import 'numerologie.dart';
 import 'three_card_draw_page.dart';
+import 'four_card_draw_page.dart';
+import 'six_card_draw_page.dart';
 import 'widgets/app_drawer.dart';
+import 'natal_chart_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,7 +30,10 @@ class MyApp extends StatelessWidget {
         '/': (context) => const HomePage(),
         '/chat': (context) => const ChatPage(),
         '/tirage3': (context) => const ThreeCardDrawPage(),
+        '/tirage4': (context) => const FourCardDrawPage(),
+        '/tirage6': (context) => const SixCardDrawPage(),
         '/numerologie': (context) => const NumerologiePage(),
+        '/natal': (context) => const NatalChartPage(),
       },
     );
   }
@@ -63,10 +68,34 @@ class HomePage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
+              icon: const Icon(Icons.star),
+              label: const Text('Tirage 4 cartes prédictif'),
+              onPressed: () {
+                Navigator.pushNamed(context, '/tirage4');
+              },
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.account_tree),
+              label: const Text('Tirage 6 cartes pyramide'),
+              onPressed: () {
+                Navigator.pushNamed(context, '/tirage6');
+              },
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
               icon: const Icon(Icons.calculate),
               label: const Text('Numerologie'),
               onPressed: () {
                 Navigator.pushNamed(context, '/numerologie');
+              },
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.star),
+              label: const Text('Carte du ciel (natal)'),
+              onPressed: () {
+                Navigator.pushNamed(context, '/natal');
               },
             ),
           ],

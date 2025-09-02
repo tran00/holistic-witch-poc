@@ -4,14 +4,14 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'openai_client.dart';
 import 'widgets/app_drawer.dart';
 
-class ThreeCardDrawPage extends StatefulWidget {
-  const ThreeCardDrawPage({super.key});
+class FourCardDrawPage extends StatefulWidget {
+  const FourCardDrawPage({super.key});
 
   @override
-  State<ThreeCardDrawPage> createState() => _ThreeCardDrawPageState();
+  State<FourCardDrawPage> createState() => _FourCardDrawPageState();
 }
 
-class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> {
+class _FourCardDrawPageState extends State<FourCardDrawPage> {
   static const List<String> tarotDeck = [
     'Le Mat', 'Le Bateleur', 'La Papesse', 'L’Impératrice', 'L’Empereur',
     'Le Pape', 'L’Amoureux', 'Le Chariot', 'La Justice', 'L’Hermite',
@@ -47,7 +47,7 @@ class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> {
     final deck = List<String>.from(tarotDeck);
     deck.shuffle(Random());
     setState(() {
-      drawnCards = deck.take(3).toList();
+      drawnCards = deck.take(4).toList();
       bonusCards = null;
       openAIAnswer = null;
       prompt = null;
@@ -63,19 +63,22 @@ class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> {
     deck.removeWhere((card) => drawnCards!.contains(card));
     deck.shuffle(Random());
     setState(() {
-      bonusCards = deck.take(2).toList();
+      bonusCards = deck.take(1).toList();
       bonusPrompt = null;
       bonusOpenAIAnswer = null;
     });
   }
 
   Future<void> askOpenAI() async {
-    if (drawnCards == null || drawnCards!.length != 3) return;
+    if (drawnCards == null || drawnCards!.length != 4) return;
     if (!mounted) return;
     final question = _questionController.text.trim();
     final cards = drawnCards!.join(', ');
     final builtPrompt =
-        "En tant qu'expert du tarot, donne un conseil détaillé à la question suivante : \"$question\" en t'appuyant sur un tirage de trois cartes : $cards. Explique le sens de chaque carte dans le contexte de la question et donne une synthèse.";
+        "En tant qu'expert du tarot, interprète ce tirage de quatre cartes pour répondre à la question suivante : \"$question\". "
+        "Le tirage est prédictif et doit décrire le déroulé des événements dans le temps : "
+        "la première carte représente le passé, la deuxième le présent, la troisième l’évolution probable, la quatrième l’issue ou le conseil. "
+        "Pour chaque carte ($cards), donne son sens dans la position correspondante et propose une synthèse sur le déroulé prévisible.";
     setState(() {
       isLoading = true;
       prompt = builtPrompt;
@@ -140,7 +143,7 @@ class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const SelectableText('Tirage 3 cartes conseil')),
+      appBar: AppBar(title: const SelectableText('Tirage 4 cartes prédictif')),
       drawer: const AppDrawer(),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -163,21 +166,70 @@ class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> {
               ),
               const SizedBox(height: 24),
               if (drawnCards != null)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: drawnCards!
-                      .map((card) => Card(
-                            margin: const EdgeInsets.symmetric(horizontal: 8),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: SelectableText(
-                                card,
-                                style: const TextStyle(
-                                    fontSize: 18, fontWeight: FontWeight.bold),
-                              ),
+                SizedBox(
+                  width: 300,
+                  height: 220,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Card 1 (left)
+                      Positioned(
+                        top: 60,
+                        left: 0,
+                        child: Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: SelectableText(
+                              drawnCards![0],
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                             ),
-                          ))
-                      .toList(),
+                          ),
+                        ),
+                      ),
+                      // Card 2 (right)
+                      Positioned(
+                        top: 60,
+                        right: 0,
+                        child: Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: SelectableText(
+                              drawnCards![1],
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Card 3 (center top)
+                      Positioned(
+                        top: 0,
+                        left: 90,
+                        child: Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: SelectableText(
+                              drawnCards![2],
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Card 4 (center bottom)
+                      Positioned(
+                        bottom: 0,
+                        left: 90,
+                        child: Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: SelectableText(
+                              drawnCards![3],
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               if (drawnCards != null) ...[
                 const SizedBox(height: 24),
@@ -225,7 +277,7 @@ class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> {
                         onPressed: (bonusCards == null && !isBonusLoading)
                             ? drawBonusCards
                             : null,
-                        child: const Text('bonus +2 cartes conseil'),
+                        child: const Text('bonus +1 cartes conseil'),
                       ),
                       if (bonusCards != null) ...[
                         const SizedBox(height: 16),
@@ -292,28 +344,23 @@ class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> {
                     ],
                   ),
               ],
-              if (drawnCards != null)
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Réinitialiser'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.redAccent,
-                    foregroundColor: Colors.white,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      drawnCards = null;
-                      bonusCards = null;
-                      openAIAnswer = null;
-                      prompt = null;
-                      bonusPrompt = null;
-                      bonusOpenAIAnswer = null;
-                      isLoading = false;
-                      isBonusLoading = false;
-                      _questionController.clear();
-                    });
-                  },
+              ElevatedButton.icon(
+                icon: const Icon(Icons.refresh),
+                label: const Text('Réinitialiser'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                  foregroundColor: Colors.white,
                 ),
+                onPressed: () {
+                  setState(() {
+                    drawnCards = null;
+                    openAIAnswer = null;
+                    prompt = null;
+                    isLoading = false;
+                    _questionController.clear();
+                  });
+                },
+              ),
               const SizedBox(height: 60),
             ],
           ),
