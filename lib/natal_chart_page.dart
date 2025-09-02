@@ -1,10 +1,12 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'widgets/app_drawer.dart';
+import 'widgets/natal_wheel_widget.dart';
 // import 'package:flutter_typeahead/flutter_typeahead.dart';
 
 class NatalChartPage extends StatefulWidget {
@@ -27,6 +29,8 @@ class _NatalChartPageState extends State<NatalChartPage> {
 
   Map<String, dynamic>? _lastSentParams;
 
+  Map<String, dynamic>? _chartData;
+
   @override
   void dispose() {
     _birthDateController.dispose();
@@ -40,7 +44,6 @@ class _NatalChartPageState extends State<NatalChartPage> {
     final apiKey = dotenv.env['ASTROLOGY_API_KEY'];
     final date = _birthDateController.text; // format: JJMMAAAA
     final time = _birthTimeController.text; // format: HH:MM
-    final place = _birthPlaceController.text;
 
     if (userId == null || apiKey == null) {
       setState(() {
@@ -49,7 +52,6 @@ class _NatalChartPageState extends State<NatalChartPage> {
       return;
     }
 
-    // Convert JJMMAAAA to DD-MM-YYYY for the API
     if (date.length != 8) {
       setState(() {
         result = "Format de date invalide.";
@@ -60,7 +62,6 @@ class _NatalChartPageState extends State<NatalChartPage> {
     final month = date.substring(2, 4);
     final year = date.substring(4, 8);
 
-    // Split time
     final timeParts = time.split(':');
     if (timeParts.length != 2) {
       setState(() {
@@ -71,19 +72,10 @@ class _NatalChartPageState extends State<NatalChartPage> {
     final hour = timeParts[0];
     final min = timeParts[1];
 
-    // For demo: use Paris coordinates if you don't have geocoding
     double lat = _selectedLat ?? 48.8566;
     double lon = _selectedLon ?? 2.3522;
 
-    // Optionally, you can use a geocoding API to get lat/lon from place
-
-    final url = Uri.parse('https://json.astrologyapi.com/v1/natal_wheel_chart');
-    // final url = Uri.parse('https://json.astrologyapi.com/v1/western_horoscope');
-    final headers = {
-      'Authorization': 'Basic ${base64Encode(utf8.encode('$userId:$apiKey'))}',
-      'Content-Type': 'application/json',
-    };
-    final body = jsonEncode({
+    final params = {
       "day": int.parse(day),
       "month": int.parse(month),
       "year": int.parse(year),
@@ -91,36 +83,26 @@ class _NatalChartPageState extends State<NatalChartPage> {
       "min": int.parse(min),
       "lat": lat,
       "lon": lon,
-      "tzone": 1.0, // Paris timezone
-    });
-
-    print('URL: $url');
-    print('Headers: $headers');
-    print('Body: $body');
+      "tzone": 1.0,
+    };
 
     setState(() {
-      _lastSentParams = {
-        "day": int.parse(day),
-        "month": int.parse(month),
-        "year": int.parse(year),
-        "hour": int.parse(hour),
-        "min": int.parse(min),
-        "lat": lat,
-        "lon": lon,
-        "tzone": 1.0,
-      };
+      _lastSentParams = params;
       result = "Calcul en cours...";
+      _chartData = null; // reset previous chart data
     });
 
+    // First call: get SVG or main result
+    final url = Uri.parse('https://json.astrologyapi.com/v1/natal_wheel_chart');
+    final headers = {
+      'Authorization': 'Basic ${base64Encode(utf8.encode('$userId:$apiKey'))}',
+      'Content-Type': 'application/json',
+    };
     try {
-      final response = await http.post(url, headers: headers, body: body);
+      final response = await http.post(url, headers: headers, body: jsonEncode(params));
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
         setState(() {
-          // You can display the whole response or just a part, e.g. sun sign
           result = response.body;
-          // Or for a cleaner display, for example:
-          // result = "Signe solaire : ${data['sun']['sign']}\nAscendant : ${data['ascendant']['sign']}\n...";
         });
       } else {
         setState(() {
@@ -132,6 +114,12 @@ class _NatalChartPageState extends State<NatalChartPage> {
         result = "Erreur de connexion : $e";
       });
     }
+
+    // Second call: fetch chart data
+    final chartData = await fetchWesternChartData(params);
+    setState(() {
+      _chartData = chartData;
+    });
   }
 
   void _calculateChart() {
@@ -158,6 +146,29 @@ class _NatalChartPageState extends State<NatalChartPage> {
       return data.cast<Map<String, dynamic>>();
     } else {
       return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> fetchWesternChartData(Map<String, dynamic> params) async {
+    final userId = dotenv.env['ASTROLOGY_API_USER_ID'];
+    final apiKey = dotenv.env['ASTROLOGY_API_KEY'];
+    final url = Uri.parse('https://json.astrologyapi.com/v1/western_chart_data');
+    final headers = {
+      'Authorization': 'Basic ${base64Encode(utf8.encode('$userId:$apiKey'))}',
+      'Content-Type': 'application/json',
+    };
+
+    try {
+      final response = await http.post(url, headers: headers, body: jsonEncode(params));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        print('Chart data API error: ${response.statusCode} ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Chart data fetch error: $e');
+      return null;
     }
   }
 
@@ -308,6 +319,35 @@ class _NatalChartPageState extends State<NatalChartPage> {
                     );
                   },
                 ),
+
+              // Display chart data if available
+              if (_chartData != null)
+                ExpansionTile(
+                  title: const Text('Voir les données brutes du thème (JSON)'),
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.amber[50],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: SelectableText(
+                        const JsonEncoder.withIndent('  ').convert(_chartData),
+                        style: const TextStyle(fontFamily: 'monospace'),
+                      ),
+                    ),
+                  ],
+                ),
+
+              // Natal Wheel custom painter
+              if (_chartData != null)
+                const SizedBox(height: 62),
+              if (_chartData != null)
+                NatalWheel(chartData: _chartData!),
+
+              const SizedBox(height: 120), // for top space (adjust as needed)
             ],
           ),
         ),
