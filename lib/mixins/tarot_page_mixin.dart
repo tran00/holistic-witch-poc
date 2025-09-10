@@ -197,27 +197,67 @@ mixin TarotPageMixin<T extends StatefulWidget> on State<T> {
       return;
     }
     
-    // BUILD PROMPT WITH CARD MEANINGS FROM TAROT.JSON
+    // BUILD SPECIFIC CARD MEANINGS (positive 1st, negative 2nd, advice 3rd)
     String originalCardMeaningsText = '';
-    if (drawnCards != null) {
+    if (drawnCards != null && drawnCards!.length >= 3) {
       originalCardMeaningsText = '\nCartes principales:\n';
-      for (String cardName in drawnCards!) {
-        final meaning = TarotService.getCardMeaning(cardName);
-        if (meaning != null) {
-          originalCardMeaningsText += '- $cardName: $meaning\n';
+      
+      // 1st card - POSITIVE only
+      final firstCardData = TarotService.getFullCardData(drawnCards![0]);
+      if (firstCardData != null) {
+        originalCardMeaningsText += '- ${drawnCards![0]} (aspect positif):\n';
+        if (firstCardData['meanings']?['positive'] != null) {
+          originalCardMeaningsText += '  ${firstCardData['meanings']['positive']}\n\n';
         } else {
-          originalCardMeaningsText += '- $cardName: (signification non trouvée)\n';
+          originalCardMeaningsText += '  (aspect positif non trouvé)\n\n';
         }
+      }
+      
+      // 2nd card - NEGATIVE only
+      final secondCardData = TarotService.getFullCardData(drawnCards![1]);
+      if (secondCardData != null) {
+        originalCardMeaningsText += '- ${drawnCards![1]} (aspect négatif):\n';
+        if (secondCardData['meanings']?['negative'] != null) {
+          originalCardMeaningsText += '  ${secondCardData['meanings']['negative']}\n\n';
+        } else {
+          originalCardMeaningsText += '  (aspect négatif non trouvé)\n\n';
+        }
+      }
+      
+      // 3rd card - ADVICE only
+      final thirdCardData = TarotService.getFullCardData(drawnCards![2]);
+      if (thirdCardData != null) {
+        originalCardMeaningsText += '- ${drawnCards![2]} (conseil):\n';
+        if (thirdCardData['meanings']?['advice']?['interpretation'] != null) {
+          originalCardMeaningsText += '  ${thirdCardData['meanings']['advice']['interpretation']}\n';
+        }
+        if (thirdCardData['meanings']?['advice']?['practical'] != null) {
+          originalCardMeaningsText += '  Pratique: ${thirdCardData['meanings']['advice']['practical']}\n';
+        }
+        originalCardMeaningsText += '\n';
       }
     }
     
+    // BUILD BONUS CARDS MEANINGS (advice only from both)
     String bonusCardMeaningsText = '\nCartes bonus (conseils supplémentaires):\n';
     for (String cardName in bonusCards!) {
-      final meaning = TarotService.getCardMeaning(cardName);
-      if (meaning != null) {
-        bonusCardMeaningsText += '- $cardName: $meaning\n';
+      final cardData = TarotService.getFullCardData(cardName);
+      if (cardData != null) {
+        bonusCardMeaningsText += '- $cardName (conseil):\n';
+        
+        // Add advice interpretation
+        if (cardData['meanings']?['advice']?['interpretation'] != null) {
+          bonusCardMeaningsText += '  ${cardData['meanings']['advice']['interpretation']}\n';
+        }
+        
+        // Add practical advice if available
+        if (cardData['meanings']?['advice']?['practical'] != null) {
+          bonusCardMeaningsText += '  Pratique: ${cardData['meanings']['advice']['practical']}\n';
+        }
+        
+        bonusCardMeaningsText += '\n';
       } else {
-        bonusCardMeaningsText += '- $cardName: (signification non trouvée)\n';
+        bonusCardMeaningsText += '- $cardName: (conseil non trouvé)\n\n';
       }
     }
     
@@ -226,16 +266,23 @@ Question: $question
 $originalCardMeaningsText
 $bonusCardMeaningsText
 
-Instructions: En tant qu'expert en tarot, utilise les significations des cartes ci-dessus pour donner une interprétation complète. 
+Instructions: En tant qu'expert en tarot, utilise les significations spécifiques des cartes ci-dessus pour donner une interprétation ciblée. 
 
-1. Commence par rappeler brièvement l'interprétation des 3 cartes principales dans le contexte de la question
-2. Puis explique comment les 2 cartes bonus viennent enrichir, compléter ou nuancer cette première lecture
-3. Donne des conseils pratiques basés sur l'ensemble des 5 cartes
-4. Termine par une synthèse globale qui intègre toutes les cartes
+Structure de lecture:
+- 1ère carte (aspect positif): Les atouts et forces disponibles
+- 2ème carte (aspect négatif): Les défis et obstacles à surmonter  
+- 3ème carte (conseil): La guidance principale pour la situation
+- Cartes bonus (conseils): Guidance supplémentaire et actions complémentaires
 
-Réponds en français avec une interprétation détaillée et personnalisée.
+1. Explique comment l'aspect positif de la 1ère carte peut être utilisé comme force
+2. Identifie les défis révélés par l'aspect négatif de la 2ème carte
+3. Intègre le conseil de la 3ème carte comme direction principale
+4. Enrichis avec les conseils des 2 cartes bonus pour une guidance complète
+5. Synthétise en un plan d'action cohérent qui utilise les forces, surmonte les défis, et suit tous les conseils
+
+Réponds en français avec une interprétation structurée et des conseils pratiques concrets.
 ''';
-  
+
     setState(() {
       isBonusLoading = true;
       bonusPrompt = builtPrompt;

@@ -40,6 +40,7 @@ dependencies:
   flutter_typeahead: ^5.2.0
   flutter_svg: ^2.0.10
   url_launcher: ^6.2.5
+  sweph: ^3.2.1+2.10.3
 
 dev_dependencies:
   flutter_test:

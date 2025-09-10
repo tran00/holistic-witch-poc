@@ -593,12 +593,12 @@ class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> with TarotPageMix
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'Cartes déjà tirées: ${drawnCards?.join(", ") ?? ""}',
-                                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                                'Cartes principales tirées: ${drawnCards?.join(", ") ?? ""}',
+                                style: TextStyle(fontSize: 14, color: Colors.purple[700], fontWeight: FontWeight.bold),
                               ),
                               const SizedBox(height: 16),
                               
-                              // Bonus cards deck grid
+                              // Bonus cards deck grid - SAME SHUFFLED ORDER AS ORIGINAL
                               GridView.builder(
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
@@ -610,16 +610,22 @@ class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> with TarotPageMix
                                 ),
                                 itemCount: TarotService.tarotDeck.length,
                                 itemBuilder: (context, index) {
-                                  final cardName = TarotService.tarotDeck[index];
+                                  // ✅ USE THE SAME SHUFFLED ORDER AS THE REGULAR DECK
+                                  final shuffledIndex = shuffledDeckOrder.isNotEmpty 
+                                      ? shuffledDeckOrder[index] 
+                                      : index;
+                                  final cardName = TarotService.tarotDeck[shuffledIndex];
+                                  
                                   final isAlreadyDrawn = drawnCards?.contains(cardName) ?? false;
-                                  final isSelected = bonusSelectedCards[index];
+                                  final isSelected = bonusSelectedCards[shuffledIndex];  // Use shuffledIndex for selection state
                                   final isAvailable = !isAlreadyDrawn;
                                   
                                   return GestureDetector(
-                                    onTap: isAvailable ? () => selectBonusCard(index) : null,
+                                    onTap: isAvailable ? () => selectBonusCard(shuffledIndex) : null,  // Pass shuffledIndex
                                     child: Card(
+                                      elevation: isAlreadyDrawn ? 4 : 2,
                                       color: isAlreadyDrawn 
-                                          ? Colors.grey[400] 
+                                          ? Colors.red[100]
                                           : isSelected 
                                               ? Colors.green[200] 
                                               : Colors.grey[300],
@@ -627,46 +633,140 @@ class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> with TarotPageMix
                                         decoration: BoxDecoration(
                                           borderRadius: BorderRadius.circular(8),
                                           border: isSelected 
-                                              ? Border.all(color: Colors.green, width: 2)
+                                              ? Border.all(color: Colors.green, width: 3)
                                               : isAlreadyDrawn
-                                                  ? Border.all(color: Colors.red, width: 2)
-                                                  : null,
+                                                  ? Border.all(color: Colors.red, width: 3)
+                                                  : Border.all(color: Colors.grey, width: 1),
                                         ),
-                                        child: Center(
-                                          child: isAlreadyDrawn
-                                              ? Column(
-                                                  mainAxisAlignment: MainAxisAlignment.center,
-                                                  children: [
-                                                    const Icon(Icons.block, color: Colors.red, size: 16),
-                                                    Text(
-                                                      cardName,
-                                                      style: const TextStyle(
-                                                        fontSize: 8,
-                                                        color: Colors.red,
-                                                      ),
-                                                      textAlign: TextAlign.center,
-                                                    ),
-                                                  ],
-                                                )
-                                              : isSelected
-                                                  ? Text(
-                                                      cardName,
-                                                      style: const TextStyle(
-                                                        fontSize: 10,
-                                                        fontWeight: FontWeight.bold,
-                                                      ),
-                                                      textAlign: TextAlign.center,
-                                                    )
-                                                  : const Icon(
-                                                      Icons.help_outline,
-                                                      size: 24,
-                                                      color: Colors.grey,
-                                                    ),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(4),
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              // Position number (shows shuffled position)
+                                              Text(
+                                                '${index + 1}',  // Display position in shuffled deck
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: isAlreadyDrawn ? Colors.red[800] : Colors.grey[600],
+                                                ),
+                                              ),
+                                              
+                                              const SizedBox(height: 2),
+                                              
+                                              // Card content
+                                              if (isAlreadyDrawn) ...[
+                                                Icon(
+                                                  Icons.star,
+                                                  color: Colors.red[700],
+                                                  size: 20,
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  cardName,
+                                                  style: TextStyle(
+                                                    fontSize: 8,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.red[800],
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                  maxLines: 3,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                                Text(
+                                                  'TIRÉE',
+                                                  style: TextStyle(
+                                                    fontSize: 6,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.red[600],
+                                                  ),
+                                                ),
+                                              ] else if (isSelected) ...[
+                                                Icon(
+                                                  Icons.check_circle,
+                                                  color: Colors.green[700],
+                                                  size: 16,
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  cardName,
+                                                  style: const TextStyle(
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.black87,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                  maxLines: 3,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ] else ...[
+                                                const Icon(
+                                                  Icons.help_outline,
+                                                  size: 20,
+                                                  color: Colors.grey,
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  '?',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.grey[600],
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ),
                                   );
                                 },
+                              ),
+                              
+                              const SizedBox(height: 16),
+                              
+                              // Legend
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 12,
+                                        height: 12,
+                                        decoration: BoxDecoration(
+                                          color: Colors.red[100],
+                                          border: Border.all(color: Colors.red, width: 2),
+                                          borderRadius: BorderRadius.circular(2),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Cartes tirées',
+                                        style: TextStyle(fontSize: 12, color: Colors.red[700]),
+                                      ),
+                                    ],
+                                  ),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 12,
+                                        height: 12,
+                                        decoration: BoxDecoration(
+                                          color: Colors.green[200],
+                                          border: Border.all(color: Colors.green, width: 2),
+                                          borderRadius: BorderRadius.circular(2),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Sélectionnées',
+                                        style: TextStyle(fontSize: 12, color: Colors.green[700]),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
                               
                               const SizedBox(height: 16),
@@ -756,7 +856,8 @@ class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> with TarotPageMix
                     ],
                   ),
               ],
-              if (drawnCards != null)
+              if (drawnCards != null)...[
+                const SizedBox(height: 60),
                 ElevatedButton.icon(
                   icon: const Icon(Icons.refresh),
                   label: const Text('Réinitialiser'),
@@ -768,6 +869,7 @@ class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> with TarotPageMix
                     resetState();
                   },
                 ),
+              ],
               const SizedBox(height: 60),
             ],
           ),

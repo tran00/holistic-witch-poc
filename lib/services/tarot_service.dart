@@ -153,4 +153,28 @@ class TarotService {
     print('⚠️ No advice found for card: $cardName');
     return null;
   }
+
+  // Add this method to get complete card data including positive, negative, and advice
+  static Map<String, dynamic>? getFullCardData(String cardName) {
+    if (_tarotMeanings == null || _tarotMeanings!.isEmpty) {
+      print('⚠️ Tarot meanings not loaded yet');
+      return null;
+    }
+    
+    // Find the JSON key for this card name
+    final jsonKey = _cardToJsonKey[cardName];
+    if (jsonKey == null) {
+      print('⚠️ No JSON key found for card: $cardName');
+      return null;
+    }
+    
+    // Get the card data from the JSON
+    final cardData = _tarotMeanings![jsonKey];
+    if (cardData == null) {
+      print('⚠️ No card data found for key: $jsonKey');
+      return null;
+    }
+    
+    return cardData;
+  }
 }

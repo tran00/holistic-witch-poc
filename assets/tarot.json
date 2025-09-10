@@ -697,5 +697,38 @@
         "practical": "faire le tri entre l’ancien et le nouveau, pardonner et laisser le\npassé dans le passé, se dire oui, regarder le nouveau cycle optimiste."
       }
     }
+  },
+    "21": {
+    "name": "LE MONDE",
+    "description": "Accomplissement – Harmonie – Réalisation\nLe Monde incarne l’aboutissement, l’unité retrouvée, la plénitude. C’est l’arcane de la réussite profonde, de l’alignement total entre ce que l’on est, ce que l’on fait et ce qui nous entoure. Il marque la fin d’un cycle, non comme une clôture ou par rupture, mais comme une consécration. C’est une carte d’ouverture, de paix intérieure, de joie partagée — une célébration du chemin parcouru.",
+    "meanings": {
+      "positive": {
+        "keywords": [
+          "Réalisation",
+          "Épanouissement",
+          "Succès global"
+        ],
+        "interpretation": "Le Monde annonce une réussite pleine, fluide, féconde. C’est l’harmonie retrouvée après les épreuves, la sensation d’être à sa place, en lien juste avec le monde. Tout s’imbrique avec naturel : les projets aboutissent, les relations s’alignent, une étape est franchie avec succès. On peut enfin savourer — sans lutte, sans tension.",
+        "predictive": "succès total, accomplissement, reconnaissance, trouver sa place dans le monde, voyage ou ouverture, sentiment d’unité, pleine réalisation."
+      },
+      "negative": {
+        "keywords": [
+          "Inachèvement",
+          "Retard",
+          "Manque de reconnaissance"
+        ],
+        "interpretation": "Il peut signaler une réussite retardée, une boucle qui ne se ferme pas tout à fait. Parfois, c’est la peur d’achever, de quitter un cycle connu, ou l’impression de ne pas être prêt à passer à autre chose. Il peut aussi parler de la difficulté de prendre sa place dans le monde ou d’un entourage non soutenant ou toxique.",
+        "predictive": "étape non finalisée, projet bloqué ou reporté, peur de conclure, difficulté à prendre sa place dans le monde et à être reconnu à cette place."
+      },
+      "advice": {
+        "keywords": [
+          "Célébrer",
+          "Intégrer",
+          "Fermer un cycle"
+        ],
+        "interpretation": "Le Monde invite à honorer le chemin accompli, à célébrer ses victoires, même silencieuses. Il rappelle que l’accomplissement est un état intérieur, autant qu’un résultat visible. Il propose d’intégrer, d’élargir sa vision, de prendre plus de place et d’oser passer à l’étape suivante avec confiance.",
+        "practical": "finaliser ce qui reste ouvert, voyager, prendre sa place sereinement."
+      }
+    }
   }
 }
