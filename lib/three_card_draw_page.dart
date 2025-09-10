@@ -189,61 +189,6 @@ class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> with TarotPageMix
   }
 
   @override
-  Future<void> askBonusOpenAI() async {
-    print('askBonusOpenAI called');
-    if (drawnCards == null || bonusCards == null) {
-      print('Missing drawn cards or bonus cards');
-      return;
-    }
-    if (!mounted) {
-      print('Widget not mounted');
-      return;
-    }
-    
-    final question = questionController.text.trim();
-    if (question.isEmpty) {
-      print('Question is empty');
-      return;
-    }
-    
-    final allCards = [...drawnCards!, ...bonusCards!];
-    final builtPrompt = PromptService.buildStandardPrompt(
-      question, 
-      allCards, 
-      "Les 3 premières cartes sont le tirage principal, les 2 dernières sont des cartes bonus pour approfondir le conseil. Explique comment ces cartes bonus complètent ou nuancent l'interprétation initiale."
-    );
-    
-    setState(() {
-      isBonusLoading = true;
-      bonusPrompt = builtPrompt;
-      bonusOpenAIAnswer = null;
-    });
-    
-    try {
-      final answer = await openAI.sendMessage(builtPrompt);
-      print('Bonus OpenAI response received: ${answer.length} characters');
-      if (mounted) {
-        setState(() {
-          bonusOpenAIAnswer = answer;
-        });
-      }
-    } catch (e) {
-      print('Bonus OpenAI error: $e');
-      if (mounted) {
-        setState(() {
-          bonusOpenAIAnswer = 'Erreur : $e';
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          isBonusLoading = false;
-        });
-      }
-    }
-  }
-
-  @override
   Future<void> revealCardsOneByOne(int totalCards) async {
     if (drawnCards == null) return;
     
@@ -767,6 +712,29 @@ class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> with TarotPageMix
                         ),
                       ],
                       
+                      // Add this right before the bonus OpenAI response
+                      if (bonusPrompt != null) ...[
+                        const SizedBox(height: 16),
+                        const SelectableText(
+                          'Prompt envoyé à OpenAI (bonus) :',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                        Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(top: 8),
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.green[50],
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: Colors.green, width: 1),
+                          ),
+                          child: SelectableText(
+                            bonusPrompt!,
+                            style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 12),
+                          ),
+                        ),
+                      ],
+
                       // BONUS OPENAI RESPONSE (if any)
                       if (isBonusLoading)
                         const CircularProgressIndicator()

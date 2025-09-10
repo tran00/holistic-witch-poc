@@ -184,7 +184,7 @@ mixin TarotPageMixin<T extends StatefulWidget> on State<T> {
 
   @override
   Future<void> askBonusOpenAI() async {
-    print('🎯 askBonusOpenAI called');
+    print('🎯 askBonusOpenAI called from mixin');
     
     if (bonusCards == null) {
       print('❌ No bonus cards');
