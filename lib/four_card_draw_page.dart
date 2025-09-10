@@ -32,6 +32,10 @@ class _FourCardDrawPageState extends State<FourCardDrawPage> {
   late final OpenAIClient _openAI;
   int revealedCards = 0;
 
+  List<bool> selectedCards = [];
+  List<int> selectedIndices = [];
+  bool showingDeck = false;
+
   @override
   void initState() {
     super.initState();
@@ -55,6 +59,9 @@ class _FourCardDrawPageState extends State<FourCardDrawPage> {
       bonusPrompt = null;
       bonusOpenAIAnswer = null;
       revealedCards = 0;
+      selectedCards = List<bool>.filled(4, false);
+      selectedIndices = [];
+      showingDeck = false;
     });
     revealCardsOneByOne();
   }
@@ -153,6 +160,54 @@ class _FourCardDrawPageState extends State<FourCardDrawPage> {
     }
   }
 
+  void toggleCardSelection(int index) {
+    setState(() {
+      selectedCards[index] = !selectedCards[index];
+      if (selectedCards[index]) {
+        selectedIndices.add(index);
+      } else {
+        selectedIndices.remove(index);
+      }
+    });
+  }
+
+  void toggleDeckVisibility() {
+    setState(() {
+      showingDeck = !showingDeck;
+    });
+  }
+
+  void showDeck() {
+    setState(() {
+      selectedCards = List.filled(tarotDeck.length, false);
+      selectedIndices.clear();
+      drawnCards = null;
+      showingDeck = true;
+    });
+  }
+
+  void selectCard(int index) {
+    if (selectedIndices.length >= 4) return; // 4 cards for this page
+
+    setState(() {
+      selectedCards[index] = true;
+      selectedIndices.add(index);
+    });
+
+    if (selectedIndices.length == 4) { // When 4 cards are selected
+      // User has selected 4 cards - add delay before switching views
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (!mounted) return;
+        setState(() {
+          drawnCards = selectedIndices.map((i) => tarotDeck[i]).toList();
+          showingDeck = false;
+          revealedCards = 0;
+        });
+        revealCardsOneByOne();
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -173,12 +228,79 @@ class _FourCardDrawPageState extends State<FourCardDrawPage> {
                 ),
               ),
               const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: drawCards,
-                child: const Text('tirez vos cartes'),
+              // Two buttons: automatic and manual selection
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton(
+                    onPressed: drawCards,
+                    child: const Text('tirage automatique'),
+                  ),
+                  const SizedBox(width: 16),
+                  ElevatedButton(
+                    onPressed: showDeck,
+                    child: const Text('choisir mes cartes'),
+                  ),
+                ],
               ),
               const SizedBox(height: 24),
-              if (drawnCards != null)
+
+              // Show deck if user wants to choose cards
+              if (showingDeck) ...[
+                Text(
+                  'Choisissez 4 cartes (${4 - selectedIndices.length} restantes)',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 5,
+                    childAspectRatio: 0.65,
+                    crossAxisSpacing: 6,
+                    mainAxisSpacing: 6,
+                  ),
+                  itemCount: tarotDeck.length,
+                  itemBuilder: (context, index) {
+                    return GestureDetector(
+                      onTap: () => selectedCards[index] ? null : selectCard(index),
+                      child: Card(
+                        color: selectedCards[index] 
+                            ? Colors.blue[100] 
+                            : Colors.grey[300],
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            border: selectedCards[index] 
+                                ? Border.all(color: Colors.blue, width: 2)
+                                : null,
+                          ),
+                          child: Center(
+                            child: selectedCards[index]
+                                ? Text(
+                                    tarotDeck[index],
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  )
+                                : const Icon(
+                                    Icons.help_outline,
+                                    size: 24,
+                                    color: Colors.grey,
+                                  ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+
+              // Show selected cards in the existing Stack layout
+              if (drawnCards != null && !showingDeck)
                 SizedBox(
                   width: 600, // much wider container
                   height: 220,

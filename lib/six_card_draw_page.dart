@@ -27,6 +27,10 @@ class _SixCardDrawPageState extends State<SixCardDrawPage> {
   bool isLoading = false;
   late final OpenAIClient _openAI;
 
+  List<bool> selectedCards = [];
+  List<int> selectedIndices = [];
+  bool showingDeck = false;
+
   @override
   void initState() {
     super.initState();
@@ -47,6 +51,9 @@ class _SixCardDrawPageState extends State<SixCardDrawPage> {
       openAIAnswer = null;
       prompt = null;
       revealedCards = 0; // <-- reset revealed cards
+      selectedCards = List<bool>.filled(6, false);
+      selectedIndices = [];
+      showingDeck = false;
     });
     revealCardsOneByOne(); // <-- start reveal animation
   }
@@ -211,6 +218,37 @@ class _SixCardDrawPageState extends State<SixCardDrawPage> {
     );
   }
 
+  void showDeck() {
+    setState(() {
+      selectedCards = List.filled(tarotDeck.length, false);
+      selectedIndices.clear();
+      drawnCards = null;
+      showingDeck = true;
+    });
+  }
+
+  void selectCard(int index) {
+    if (selectedIndices.length >= 6) return;
+
+    setState(() {
+      selectedCards[index] = true;
+      selectedIndices.add(index);
+    });
+
+    if (selectedIndices.length == 6) {
+      // User has selected 6 cards - add delay before switching views
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (!mounted) return;
+        setState(() {
+          drawnCards = selectedIndices.map((i) => tarotDeck[i]).toList();
+          showingDeck = false;
+          revealedCards = 0;
+        });
+        revealCardsOneByOne();
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -231,12 +269,77 @@ class _SixCardDrawPageState extends State<SixCardDrawPage> {
                 ),
               ),
               const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: drawCards,
-                child: const Text('tirez vos cartes'),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton(
+                    onPressed: drawCards,
+                    child: const Text('tirage automatique'),
+                  ),
+                  const SizedBox(width: 16),
+                  ElevatedButton(
+                    onPressed: showDeck,
+                    child: const Text('choisir mes cartes'),
+                  ),
+                ],
               ),
               const SizedBox(height: 24),
-              if (drawnCards != null) _pyramidLayout(drawnCards!),
+              // Show deck if user wants to choose cards
+              if (showingDeck) ...[
+                Text(
+                  'Choisissez 6 cartes (${6 - selectedIndices.length} restantes)',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 5,
+                    childAspectRatio: 0.65,
+                    crossAxisSpacing: 6,
+                    mainAxisSpacing: 6,
+                  ),
+                  itemCount: tarotDeck.length,
+                  itemBuilder: (context, index) {
+                    return GestureDetector(
+                      onTap: () => selectedCards[index] ? null : selectCard(index),
+                      child: Card(
+                        color: selectedCards[index] 
+                            ? Colors.blue[100] 
+                            : Colors.grey[300],
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            border: selectedCards[index] 
+                                ? Border.all(color: Colors.blue, width: 2)
+                                : null,
+                          ),
+                          child: Center(
+                            child: selectedCards[index]
+                                ? Text(
+                                    tarotDeck[index],
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  )
+                                : const Icon(
+                                    Icons.help_outline,
+                                    size: 24,
+                                    color: Colors.grey,
+                                  ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+
+              // Show selected cards in pyramid layout
+              if (drawnCards != null && !showingDeck) _pyramidLayout(drawnCards!),
               if (drawnCards != null) ...[
                 const SizedBox(height: 24),
                 ElevatedButton(

@@ -1,6 +1,9 @@
+import 'dart:async';
+import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'openai_client.dart';
+import 'services/openai_service.dart';
 import 'widgets/chat_bubble.dart';
 import 'numerologie.dart';
 import 'three_card_draw_page.dart';
@@ -9,9 +12,29 @@ import 'six_card_draw_page.dart';
 import 'widgets/app_drawer.dart';
 import 'natal_chart_page.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load();
+  
+  // Simple error handling
+  FlutterError.onError = (FlutterErrorDetails details) {
+    print('💥 Flutter Error: ${details.exception}');
+    print('💥 Context: ${details.context}');
+  };
+  
+  // Load .env with simple try-catch
+  try {
+    print('🔄 Loading .env file...');
+    await dotenv.load(fileName: ".env");
+    print('✅ .env loaded - API Key found: ${dotenv.env['OPENAI_API_KEY']?.isNotEmpty == true ? "YES" : "NO"}');
+  } catch (e) {
+    print('❌ Error loading .env: $e');
+    print('⚠️ App will continue without .env file');
+    
+    // Initialize dotenv with empty map to prevent null errors
+    dotenv.testLoad(fileInput: '');
+  }
+  
+  // Run app directly
   runApp(const MyApp());
 }
 
@@ -117,12 +140,12 @@ class _ChatPageState extends State<ChatPage> {
   final GlobalKey<AnimatedListState> _listKey = GlobalKey<AnimatedListState>();
   final List<Map<String, String>> _messages = [];
   bool _isLoading = false;
-  late final OpenAIClient _openAI;
+  late final OpenAIService _openAI;
 
   @override
   void initState() {
     super.initState();
-    _openAI = OpenAIClient(dotenv.env['OPENAI_API_KEY'] ?? '');
+    _openAI = OpenAIService();
   }
 
   Future<void> _sendMessage() async {
@@ -155,7 +178,7 @@ class _ChatPageState extends State<ChatPage> {
 
     return SlideTransition(
       position: Tween<Offset>(
-        begin: isUser ? const Offset(1, 0) : const Offset(-1, 0), // slide from right or left
+        begin: isUser ? const Offset(1, 0) : const Offset(-1, 0),
         end: Offset.zero,
       ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut)),
       child: FadeTransition(

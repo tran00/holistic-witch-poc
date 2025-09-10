@@ -2,12 +2,34 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+// DEBUG FLAG - Set to true to disable real OpenAI calls
+const bool DISABLE_OPENAI = false;
+
 class OpenAIClient {
   final String apiKey;
 
-  OpenAIClient(this.apiKey);
+  OpenAIClient(this.apiKey) {
+    if (apiKey.isEmpty) {
+      print('⚠️ Warning: OpenAI API key is empty');
+    }
+  }
 
   Future<String> sendMessage(String message) async {
+    if (DISABLE_OPENAI) {
+      print('🤖 OpenAI DISABLED - returning mock response');
+      await Future.delayed(const Duration(seconds: 1));
+      return "Mock response: Votre question a été reçue. Les cartes tirées offrent des perspectives intéressantes pour votre situation.";
+    }
+
+    // Real OpenAI implementation (only runs if DISABLE_OPENAI is false)
+    if (apiKey.isEmpty) {
+      throw Exception('API key is not configured');
+    }
+
+    if (message.isEmpty) {
+      throw Exception('Message cannot be empty');
+    }
+
     final url = Uri.parse('https://api.openai.com/v1/chat/completions');
     final response = await http.post(
       url,
