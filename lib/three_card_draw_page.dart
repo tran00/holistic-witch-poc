@@ -119,19 +119,16 @@ class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> with TarotPageMix
 
   @override
   Future<void> askOpenAI() async {
-    print('askOpenAI called');
+    print('🎯 askOpenAI called');
+    
     if (drawnCards == null) {
-      print('No drawn cards');
-      return;
-    }
-    if (!mounted) {
-      print('Widget not mounted');
+      print('❌ No drawn cards');
       return;
     }
     
     final question = questionController.text.trim();
     if (question.isEmpty) {
-      print('Question is empty');
+      print('❌ Question is empty');
       return;
     }
     
@@ -145,19 +142,27 @@ class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> with TarotPageMix
       isLoading = true;
       prompt = builtPrompt;
       openAIAnswer = null;
+      // Make sure bonus state is reset
+      bonusCards = null;
+      bonusOpenAIAnswer = null;
+      isBonusLoading = false;
     });
     
     try {
-      final answer = await openAI.sendMessage(builtPrompt);
-      print('OpenAI response received: ${answer.length} characters');
+      final answer = await openAI.getTarotReading(builtPrompt);
+      print('📥 OpenAI response received: ${answer.length} characters');
+      
       if (mounted) {
         setState(() {
           openAIAnswer = answer;
         });
-        print('openAIAnswer set, bonusCards: $bonusCards, isBonusLoading: $isBonusLoading');
+        print('✅ openAIAnswer set to: ${openAIAnswer?.substring(0, 50)}...');
+        print('✅ bonusCards: $bonusCards');
+        print('✅ isBonusLoading: $isBonusLoading');
+        print('✅ Bonus button should be visible now');
       }
     } catch (e) {
-      print('OpenAI error: $e');
+      print('💥 Error in askOpenAI: $e');
       if (mounted) {
         setState(() {
           openAIAnswer = 'Erreur : $e';
@@ -325,15 +330,15 @@ class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> with TarotPageMix
 
   @override
   void drawBonusCards() {
-    print('drawBonusCards called');
+    print('🎲 drawBonusCards called');
     if (drawnCards == null) {
-      print('No drawn cards for bonus');
+      print('❌ No drawn cards for bonus');
       return;
     }
     
     setState(() {
       bonusCards = TarotService.drawBonusCards(drawnCards!, 2);
-      print('Bonus cards drawn: $bonusCards');
+      print('✅ Bonus cards drawn: $bonusCards');
     });
   }
 
@@ -442,36 +447,27 @@ class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> with TarotPageMix
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SelectableText(
-                        'Réponse de OpenAI :',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
+                      // OpenAI response display
+                      const SelectableText('Réponse de OpenAI :', style: TextStyle(fontWeight: FontWeight.bold)),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         child: SelectableText(openAIAnswer!),
                       ),
                       
-                      // ADD THIS SECTION - BONUS BUTTON
+                      // BONUS BUTTON MUST BE HERE, INSIDE THE Column
                       const SizedBox(height: 24),
                       ElevatedButton(
-                        onPressed: (bonusCards == null && !isBonusLoading)
-                            ? drawBonusCards
-                            : null,
+                        onPressed: (bonusCards == null && !isBonusLoading) ? drawBonusCards : null,
                         child: const Text('bonus +2 cartes conseil'),
                       ),
                       
-                      // Bonus cards display
+                      // Bonus cards display (if any)
                       if (bonusCards != null) ...[
                         const SizedBox(height: 16),
-                        const SelectableText(
-                          'Cartes bonus tirées :',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
+                        const SelectableText('Cartes bonus tirées :', style: TextStyle(fontWeight: FontWeight.bold)),
                         Wrap(
                           spacing: 8,
-                          children: bonusCards!
-                              .map((card) => Chip(label: Text(card)))
-                              .toList(),
+                          children: bonusCards!.map((card) => Chip(label: Text(card))).toList(),
                         ),
                         const SizedBox(height: 16),
                         ElevatedButton(
@@ -479,6 +475,7 @@ class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> with TarotPageMix
                           child: const Text('demander à openAI (bonus)'),
                         ),
                       ],
+                      
                     ],
                   ),
                 // Custom OpenAI Response (ADD HERE)

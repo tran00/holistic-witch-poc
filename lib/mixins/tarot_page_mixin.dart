@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import '../services/tarot_service.dart';
 import '../services/openai_service.dart';
-import '../services/prompt_service.dart'; // ADD THIS IMPORT
+import '../services/prompt_service.dart';
 
 mixin TarotPageMixin<T extends StatefulWidget> on State<T> {
   List<String>? drawnCards;
@@ -37,8 +37,20 @@ mixin TarotPageMixin<T extends StatefulWidget> on State<T> {
     openAI = OpenAIService();
   }
 
+  @override
   void dispose() {
-    questionController.dispose();
+    // SAFE DISPOSAL - Check if controller is still valid
+    try {
+      if (!questionController.hasListeners || questionController.text.isNotEmpty || questionController.text.isEmpty) {
+        // Controller is still valid, safe to dispose
+        questionController.dispose();
+        print('✅ TextEditingController disposed safely');
+      }
+    } catch (e) {
+      // Controller was already disposed, that's fine
+      print('⚠️ TextEditingController was already disposed: $e');
+    }
+    
     super.dispose();
   }
 
