@@ -72,8 +72,14 @@ class _NatalChartPageState extends State<NatalChartPage> {
     final hour = timeParts[0];
     final min = timeParts[1];
 
-    double lat = _selectedLat ?? 48.8566;
-    double lon = _selectedLon ?? 2.3522;
+    // double lat = _selectedLat ?? 48.8566;
+    // double lon = _selectedLon ?? 2.3522;
+
+    // neuily-sur-seine
+    double lat = _selectedLat ?? 48.8848;
+    double lon = _selectedLon ?? 2.2674;
+
+
 
     final params = {
       "day": int.parse(day),
