@@ -408,19 +408,11 @@ class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> with TarotPageMix
                 ),
               ),
               const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton(
-                    onPressed: drawCards,
-                    child: const Text('tirage automatique'),
-                  ),
-                  const SizedBox(width: 16),
-                  ElevatedButton(
-                    onPressed: showDeck,
-                    child: const Text('choisir mes cartes'),
-                  ),
-                ],
+              Center(
+                child: ElevatedButton(
+                  onPressed: showDeck,
+                  child: const Text('choisir mes cartes'),
+                ),
               ),
               const SizedBox(height: 24),
               
@@ -488,7 +480,7 @@ class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> with TarotPageMix
                   ),
                 ],
                 const SizedBox(height: 16),
-                // Standard OpenAI Response
+                // STANDARD OpenAI Response - REPLACE THIS SECTION
                 if (isLoading)
                   const CircularProgressIndicator()
                 else if (openAIAnswer != null)
@@ -502,12 +494,198 @@ class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> with TarotPageMix
                         child: SelectableText(openAIAnswer!),
                       ),
                       
-                      // BONUS BUTTON MUST BE HERE, INSIDE THE Column
+                      // UPDATED BONUS BUTTON - Use manual selection for both flows
                       const SizedBox(height: 24),
                       ElevatedButton(
-                        onPressed: (bonusCards == null && !isBonusLoading) ? drawBonusCards : null,
+                        onPressed: (bonusCards == null && !isBonusLoading && !showingBonusSelection)
+                            ? showBonusCardSelection  // ✅ Use manual selection instead of drawBonusCards
+                            : null,
                         child: const Text('bonus +2 cartes conseil'),
                       ),
+                      
+                      // BONUS DECK SELECTOR (IF SHOWING) - Same as custom flow
+                      if (showingBonusSelection) ...[
+                        const SizedBox(height: 32),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.blue, width: 2),  // Blue for standard flow
+                            borderRadius: BorderRadius.circular(8),
+                            color: Colors.blue[50],
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                'Choisissez 2 cartes bonus (${2 - bonusSelectedIndices.length} restantes)',
+                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Cartes principales tirées: ${drawnCards?.join(", ") ?? ""}',
+                                style: TextStyle(fontSize: 14, color: Colors.blue[700], fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 16),
+                              
+                              // Same deck grid as in custom flow
+                              GridView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 5,
+                                  childAspectRatio: 0.65,
+                                  crossAxisSpacing: 6,
+                                  mainAxisSpacing: 6,
+                                ),
+                                itemCount: TarotService.tarotDeck.length,
+                                itemBuilder: (context, index) {
+                                  final shuffledIndex = shuffledDeckOrder.isNotEmpty 
+                                      ? shuffledDeckOrder[index] 
+                                      : index;
+                                  final cardName = TarotService.tarotDeck[shuffledIndex];
+                                  
+                                  final isAlreadyDrawn = drawnCards?.contains(cardName) ?? false;
+                                  final isSelected = bonusSelectedCards[shuffledIndex];
+                                  final isAvailable = !isAlreadyDrawn;
+                                  
+                                  return GestureDetector(
+                                    onTap: isAvailable ? () => selectBonusCard(shuffledIndex) : null,
+                                    child: Card(
+                                      elevation: isAlreadyDrawn ? 4 : 2,
+                                      color: isAlreadyDrawn 
+                                          ? Colors.red[100]
+                                          : isSelected 
+                                              ? Colors.green[200] 
+                                              : Colors.grey[300],
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: isSelected 
+                                              ? Border.all(color: Colors.green, width: 3)
+                                              : isAlreadyDrawn
+                                                  ? Border.all(color: Colors.red, width: 3)
+                                                  : Border.all(color: Colors.grey, width: 1),
+                                        ),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(4),
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Text(
+                                                '${index + 1}',
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: isAlreadyDrawn ? Colors.red[800] : Colors.grey[600],
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              if (isAlreadyDrawn) ...[
+                                                Icon(Icons.star, color: Colors.red[700], size: 20),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  cardName,
+                                                  style: TextStyle(
+                                                    fontSize: 8,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.red[800],
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                  maxLines: 3,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                                Text(
+                                                  'TIRÉE',
+                                                  style: TextStyle(
+                                                    fontSize: 6,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.red[600],
+                                                  ),
+                                                ),
+                                              ] else if (isSelected) ...[
+                                                Icon(Icons.check_circle, color: Colors.green[700], size: 16),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  cardName,
+                                                  style: const TextStyle(
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.black87,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                  maxLines: 3,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ] else ...[
+                                                const Icon(Icons.help_outline, size: 20, color: Colors.grey),
+                                                const SizedBox(height: 2),
+                                                Text('?', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                                              ],
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              
+                              const SizedBox(height: 16),
+                              
+                              // Legend and buttons
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 12, height: 12,
+                                        decoration: BoxDecoration(
+                                          color: Colors.red[100],
+                                          border: Border.all(color: Colors.red, width: 2),
+                                          borderRadius: BorderRadius.circular(2),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text('Cartes tirées', style: TextStyle(fontSize: 12, color: Colors.red[700])),
+                                    ],
+                                  ),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 12, height: 12,
+                                        decoration: BoxDecoration(
+                                          color: Colors.green[200],
+                                          border: Border.all(color: Colors.green, width: 2),
+                                          borderRadius: BorderRadius.circular(2),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text('Sélectionnées', style: TextStyle(fontSize: 12, color: Colors.green[700])),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              
+                              const SizedBox(height: 16),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  ElevatedButton(
+                                    onPressed: cancelBonusSelection,
+                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
+                                    child: const Text('Annuler'),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: bonusSelectedIndices.length == 2 ? confirmBonusSelection : null,
+                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                                    child: Text('Confirmer (${bonusSelectedIndices.length}/2)'),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       
                       // Bonus cards display (if any)
                       if (bonusCards != null) ...[
@@ -525,8 +703,48 @@ class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> with TarotPageMix
                           onPressed: isBonusLoading ? null : askBonusOpenAI,
                           child: const Text('demander à openAI (bonus)'),
                         ),
+                        
+                        // Bonus prompt and response
+                        if (bonusPrompt != null) ...[
+                          const SizedBox(height: 16),
+                          const SelectableText(
+                            'Prompt envoyé à OpenAI (bonus) :',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                          Container(
+                            width: double.infinity,
+                            margin: const EdgeInsets.only(top: 8),
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.green[50],
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: Colors.green, width: 1),
+                            ),
+                            child: SelectableText(
+                              bonusPrompt!,
+                              style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 12),
+                            ),
+                          ),
+                        ],
+                        
+                        if (isBonusLoading)
+                          const CircularProgressIndicator()
+                        else if (bonusOpenAIAnswer != null)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 16),
+                              const SelectableText(
+                                'Réponse bonus OpenAI :',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                child: SelectableText(bonusOpenAIAnswer!),
+                              ),
+                            ],
+                          ),
                       ],
-                      
                     ],
                   ),
                 // Custom OpenAI Response
