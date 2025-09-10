@@ -182,20 +182,60 @@ mixin TarotPageMixin<T extends StatefulWidget> on State<T> {
     });
   }
 
+  @override
   Future<void> askBonusOpenAI() async {
-    if (drawnCards == null || bonusCards == null) return;
-    if (!mounted) return;
+    print('🎯 askBonusOpenAI called');
+    
+    if (bonusCards == null) {
+      print('❌ No bonus cards');
+      return;
+    }
     
     final question = questionController.text.trim();
-    if (question.isEmpty) return;
+    if (question.isEmpty) {
+      print('❌ Question is empty');
+      return;
+    }
     
-    final allCards = [...drawnCards!, ...bonusCards!];
-    final builtPrompt = PromptService.buildStandardPrompt(
-      question, 
-      allCards, 
-      "Les 3 premières cartes sont le tirage principal, les 2 dernières sont des cartes bonus pour approfondir le conseil. Explique comment ces cartes bonus complètent ou nuancent l'interprétation initiale."
-    );
+    // BUILD PROMPT WITH CARD MEANINGS FROM TAROT.JSON
+    String originalCardMeaningsText = '';
+    if (drawnCards != null) {
+      originalCardMeaningsText = '\nCartes principales:\n';
+      for (String cardName in drawnCards!) {
+        final meaning = TarotService.getCardMeaning(cardName);
+        if (meaning != null) {
+          originalCardMeaningsText += '- $cardName: $meaning\n';
+        } else {
+          originalCardMeaningsText += '- $cardName: (signification non trouvée)\n';
+        }
+      }
+    }
     
+    String bonusCardMeaningsText = '\nCartes bonus (conseils supplémentaires):\n';
+    for (String cardName in bonusCards!) {
+      final meaning = TarotService.getCardMeaning(cardName);
+      if (meaning != null) {
+        bonusCardMeaningsText += '- $cardName: $meaning\n';
+      } else {
+        bonusCardMeaningsText += '- $cardName: (signification non trouvée)\n';
+      }
+    }
+    
+    final builtPrompt = '''
+Question: $question
+$originalCardMeaningsText
+$bonusCardMeaningsText
+
+Instructions: En tant qu'expert en tarot, utilise les significations des cartes ci-dessus pour donner une interprétation complète. 
+
+1. Commence par rappeler brièvement l'interprétation des 3 cartes principales dans le contexte de la question
+2. Puis explique comment les 2 cartes bonus viennent enrichir, compléter ou nuancer cette première lecture
+3. Donne des conseils pratiques basés sur l'ensemble des 5 cartes
+4. Termine par une synthèse globale qui intègre toutes les cartes
+
+Réponds en français avec une interprétation détaillée et personnalisée.
+''';
+  
     setState(() {
       isBonusLoading = true;
       bonusPrompt = builtPrompt;
@@ -203,13 +243,16 @@ mixin TarotPageMixin<T extends StatefulWidget> on State<T> {
     });
     
     try {
-      final answer = await openAI.getBonusReading(builtPrompt); // Use bonus method
+      final answer = await openAI.getTarotReading(builtPrompt);
+      print('📥 Bonus OpenAI response received: ${answer.length} characters');
+      
       if (mounted) {
         setState(() {
           bonusOpenAIAnswer = answer;
         });
       }
     } catch (e) {
+      print('💥 Error in askBonusOpenAI: $e');
       if (mounted) {
         setState(() {
           bonusOpenAIAnswer = 'Erreur : $e';

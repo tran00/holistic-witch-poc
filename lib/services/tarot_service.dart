@@ -104,4 +104,28 @@ class TarotService {
     final jsonKey = _cardToJsonKey[cardName]!;
     return _tarotMeanings![jsonKey];
   }
+
+  static String? getCardMeaning(String cardName) {
+    if (_tarotMeanings == null || _tarotMeanings!.isEmpty) {
+      print('⚠️ Tarot meanings not loaded yet');
+      return null;
+    }
+    
+    // Find the card in the meanings map
+    final meaning = _tarotMeanings![cardName];
+    if (meaning != null) {
+      return meaning;
+    }
+    
+    // If not found, try to find a close match (case insensitive)
+    final lowerCardName = cardName.toLowerCase();
+    for (final entry in _tarotMeanings!.entries) {
+      if (entry.key.toLowerCase() == lowerCardName) {
+        return entry.value;
+      }
+    }
+    
+    print('⚠️ No meaning found for card: $cardName');
+    return null;
+  }
 }
