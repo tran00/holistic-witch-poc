@@ -217,15 +217,26 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
           print('House ${i + 1}: ${houseCusps[i].toStringAsFixed(2)}°');
         }
         
-        // Only take the first 12 house cusps (ignore any extra)
-        final validCusps = houseCusps.take(12).toList();
+        // Only take the first 12 house cusps starting from index 1 (ignore any extra)
+        final validCusps = houseCusps.skip(1).take(12).toList();
+
+        // Debug: Print raw house cusps (adjusted for new indexing)
+        print('🏠 Raw house cusps from SwEph (shifted):');
+        for (int i = 0; i < validCusps.length; i++) {
+          print('House ${i + 1}: ${validCusps[i].toStringAsFixed(2)}°');
+        }
         
         // Store the Ascendant for reference
         final ascendant = validCusps[0]; // First house cusp = Ascendant
         chartData['ascendant'] = ascendant;
-        
+
         print('🏠 Ascendant: ${ascendant.toStringAsFixed(2)}°');
-        
+
+        // Store other angles
+        chartData['descendant'] = validCusps[6]; // House 7 cusp
+        chartData['mc'] = validCusps[9]; // House 10 cusp
+        chartData['imum_coeli'] = validCusps[3]; // House 4 cusp
+
         for (int i = 0; i < validCusps.length; i++) {
           final houseLon = validCusps[i];
           final nextHouseLon = validCusps[(i + 1) % validCusps.length];

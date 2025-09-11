@@ -15,10 +15,12 @@ class _NumerologiePageState extends State<NumerologiePage> {
   final _birthDateController = TextEditingController();
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
+  final _currentYearController = TextEditingController(); // New
 
   int? nombreDeVie;
   int? nombreExpression;
   int? nombreIntime;
+  int? nombreAnneePersonnelle; // New
 
   String? cheminPrompt;
   String? cheminAnswer;
@@ -26,10 +28,13 @@ class _NumerologiePageState extends State<NumerologiePage> {
   String? expressionAnswer;
   String? intimePrompt;
   String? intimeAnswer;
+  String? anneePrompt; // New
+  String? anneeAnswer; // New
 
   bool isLoadingChemin = false;
   bool isLoadingExpression = false;
   bool isLoadingIntime = false;
+  bool isLoadingAnnee = false; // New
 
   late final OpenAIClient _openAI;
 
@@ -37,6 +42,14 @@ class _NumerologiePageState extends State<NumerologiePage> {
   void initState() {
     super.initState();
     _openAI = OpenAIClient(dotenv.env['OPENAI_API_KEY'] ?? '');
+    
+    // Add default data
+    _birthDateController.text = '08051980';
+    _firstNameController.text = 'Pamela ELEONORE MARGUERITE';
+    _lastNameController.text = 'Lessel';
+    
+    // Set current year
+    _currentYearController.text = DateTime.now().year.toString();
   }
 
   @override
@@ -44,6 +57,7 @@ class _NumerologiePageState extends State<NumerologiePage> {
     _birthDateController.dispose();
     _firstNameController.dispose();
     _lastNameController.dispose();
+    _currentYearController.dispose(); // New
     super.dispose();
   }
 
@@ -87,13 +101,36 @@ class _NumerologiePageState extends State<NumerologiePage> {
     return sum;
   }
 
+  int _calculateAnneePersonnelle(String birthDate, int currentYear) {
+    // Calculate the personal year number
+    final birthYear = int.parse(birthDate.substring(4, 8));
+    int anneePersonnelle = (birthYear % 100) + currentYear;
+    while (anneePersonnelle > 9 && anneePersonnelle != 11 && anneePersonnelle != 22 && anneePersonnelle != 33) {
+      anneePersonnelle = anneePersonnelle.toString().split('').map(int.parse).reduce((a, b) => a + b);
+    }
+    return anneePersonnelle;
+  }
+
+  int _calculatePersonalYear(String birthDate, String currentYear) {
+    if (birthDate.length != 8 || currentYear.length != 4) return 0;
+    final day = int.parse(birthDate.substring(0, 2));
+    final month = int.parse(birthDate.substring(2, 4));
+    final year = int.parse(currentYear);
+    int sum = day + month + year;
+    while (sum > 9 && sum != 11 && sum != 22 && sum != 33) {
+      sum = sum.toString().split('').map(int.parse).reduce((a, b) => a + b);
+    }
+    return sum;
+  }
+
   void _calculateNumbers() {
     final birthDate = _birthDateController.text.trim();
     final firstName = _firstNameController.text.trim();
     final lastName = _lastNameController.text.trim();
+    final currentYear = _currentYearController.text.trim();
 
     // Validation
-    if (birthDate.length != 8 || firstName.isEmpty || lastName.isEmpty) {
+    if (birthDate.length != 8 || firstName.isEmpty || lastName.isEmpty || currentYear.length != 4) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Veuillez remplir tous les champs correctement.')),
       );
@@ -104,12 +141,15 @@ class _NumerologiePageState extends State<NumerologiePage> {
       nombreDeVie = _calculateLifePathNumber(birthDate);
       nombreExpression = _calculateExpressionNumber(firstName, lastName);
       nombreIntime = _calculateIntimeNumber(firstName, lastName);
+      nombreAnneePersonnelle = _calculatePersonalYear(birthDate, currentYear); // New
       cheminPrompt = null;
       cheminAnswer = null;
       expressionPrompt = null;
       expressionAnswer = null;
       intimePrompt = null;
       intimeAnswer = null;
+      anneePrompt = null; // New
+      anneeAnswer = null; // New
     });
   }
 
@@ -206,6 +246,37 @@ class _NumerologiePageState extends State<NumerologiePage> {
     }
   }
 
+  Future<void> _askAnneeOpenAI() async {
+    if (nombreAnneePersonnelle == null) return;
+    final prompt =
+        "En tant qu'expert en numérologie, analyse l'année personnelle numéro $nombreAnneePersonnelle pour une personne née le ${_birthDateController.text}. Donne une interprétation détaillée.";
+    setState(() {
+      isLoadingAnnee = true;
+      anneePrompt = prompt;
+      anneeAnswer = null;
+    });
+    try {
+      final answer = await _openAI.sendMessage(prompt);
+      if (mounted) {
+        setState(() {
+          anneeAnswer = answer;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          anneeAnswer = 'Erreur : $e';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoadingAnnee = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -255,6 +326,17 @@ class _NumerologiePageState extends State<NumerologiePage> {
                       border: OutlineInputBorder(),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _currentYearController,
+                    decoration: const InputDecoration(
+                      labelText: 'Année actuelle (AAAA)',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                    maxLength: 4,
+                    //readOnly: true, // Add this to make it non-editable
+                  ),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: _calculateNumbers,
@@ -264,13 +346,14 @@ class _NumerologiePageState extends State<NumerologiePage> {
               ),
             ),
             const SizedBox(height: 32),
-            if (nombreDeVie != null && nombreExpression != null && nombreIntime != null)
+            if (nombreDeVie != null && nombreExpression != null && nombreIntime != null && nombreAnneePersonnelle != null)
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SelectableText('Nombre de vie : $nombreDeVie', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  SelectableText('Nombre chemin de vie : $nombreDeVie', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   SelectableText('Nombre d\'expression : $nombreExpression', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   SelectableText('Nombre intime : $nombreIntime', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  SelectableText('Nombre année personnelle : $nombreAnneePersonnelle', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), // New
                   const SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: isLoadingChemin ? null : _askCheminOpenAI,
@@ -372,6 +455,40 @@ class _NumerologiePageState extends State<NumerologiePage> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       child: SelectableText(intimeAnswer!),
+                    ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: isLoadingAnnee ? null : _askAnneeOpenAI,
+                    child: const Text('année personnelle'),
+                  ),
+                  if (anneePrompt != null) ...[
+                    const SizedBox(height: 32),
+                    const SelectableText('Prompt :', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(top: 4),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.amber[100],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: SelectableText(
+                        anneePrompt!,
+                        style: const TextStyle(fontStyle: FontStyle.italic),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  if (isLoadingAnnee)
+                    const Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                  if (anneeAnswer != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: SelectableText(anneeAnswer!),
                     ),
                 ],
               ),
