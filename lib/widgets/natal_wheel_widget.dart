@@ -78,7 +78,7 @@ class NatalWheelPainter extends CustomPainter {
 
     // Draw zodiac segments (arcs) - inner
     for (int i = 0; i < 12; i++) {
-      final startAngle = (-pi / 2) - ((i * 30 - ascDegree) * pi / 180);
+      final startAngle = (-pi) - ((i * 30 - ascDegree) * pi / 180); // Rotated base
       final sweepAngle = 30 * pi / 180;
       final arcPaint = Paint()
         ..color = Colors.primaries[i % Colors.primaries.length].withOpacity(0.15)
@@ -93,10 +93,9 @@ class NatalWheelPainter extends CustomPainter {
       );
     }
 
-
     // Draw degree ruler (every 5° a small tick, every 30° a big tick) - inner
     for (int deg = 0; deg < 360; deg += 5) {
-      final angle = (-pi / 2) - ((deg - ascDegree) * pi / 180);
+      final angle = (-pi) - ((deg - ascDegree) * pi / 180); // Rotated base
       final isMajor = deg % 30 == 0;
       final tickStart = center + Offset(
         (zodiacRadiusInner - 2) * cos(angle),
@@ -111,7 +110,6 @@ class NatalWheelPainter extends CustomPainter {
         tickEnd,
         Paint()
           ..color = isMajor ? Colors.deepPurple : Colors.grey
-          // ..strokeWidth = isMajor ? 2.5 : 1,
           ..strokeWidth = isMajor ? 1 : 1,
       );
     }
@@ -119,7 +117,7 @@ class NatalWheelPainter extends CustomPainter {
     // Draw degree labels (inner)
     for (int i = 0; i < 12; i++) {
       final deg = i * 30;
-      final angle = (-pi / 2) - ((deg - ascDegree) * pi / 180);
+      final angle = (-pi) - ((deg - ascDegree) * pi / 180); // Rotated base
       final tx = center.dx + (zodiacRadiusInner - 22) * cos(angle);
       final ty = center.dy + (zodiacRadiusInner - 22) * sin(angle);
       final textPainter = TextPainter(
@@ -144,7 +142,7 @@ class NatalWheelPainter extends CustomPainter {
         final startDeg = (houses[i]['start_degree'] as num).toDouble();
 
         // Angle for house cusp line
-        final angle = (-pi / 2) - (startDeg - ascDegree) * pi / 180;
+        final angle = (-pi) - (startDeg - ascDegree) * pi / 180; // Rotated base
 
         // Draw house cusp line (shortened)
         final cuspStart = center + Offset(houseLineInner * cos(angle), houseLineInner * sin(angle));
@@ -167,7 +165,7 @@ class NatalWheelPainter extends CustomPainter {
           if (midDeg > 360) midDeg -= 360;
         }
 
-        final midAngle = (-pi / 2) - (midDeg - ascDegree) * pi / 180;
+        final midAngle = (-pi) - (midDeg - ascDegree) * pi / 180; // Rotated base
         final nx = center.dx + numberRadius * cos(midAngle);
         final ny = center.dy + numberRadius * sin(midAngle);
         final textPainter = TextPainter(
@@ -181,39 +179,6 @@ class NatalWheelPainter extends CustomPainter {
       }
     }
 
-    // Draw borders to separate houses (thick lines at each house boundary)
-    // for (int i = 0; i < 12; i++) {
-    //   final angle = (-pi / 2) - ((i * 30 - ascDegree) * pi / 180);
-    //   final start = center + Offset((zodiacRadiusOuter + 10) * cos(angle), (zodiacRadiusOuter + 10) * sin(angle));
-    //   final end = center + Offset((radius + 20) * cos(angle), (radius + 20) * sin(angle));
-    //   canvas.drawLine(
-    //     start,
-    //     end,
-    //     Paint()
-    //       ..color = Colors.black
-    //       ..strokeWidth = 5, // Thick border
-    //   );
-    // }
-
-    // Draw zodiac glyphs between their circle and the inner circle containing the lines
-    // for (int i = 0; i < 12; i++) {
-    //   final startAngle = (-pi / 2) - ((i * 30 - ascDegree) * pi / 180);
-    //   final sweepAngle = 30 * pi / 180;
-    //   final midAngle = startAngle + sweepAngle / 2;
-    //   // Position between zodiac circle and house lines (e.g., at zodiacRadiusInner + 5)
-    //   final glyphRadius = zodiacRadiusInner + 5;
-    //   final zx = center.dx + glyphRadius * cos(midAngle);
-    //   final zy = center.dy + glyphRadius * sin(midAngle);
-    //   final textPainter = TextPainter(
-    //     text: TextSpan(
-    //       text: zodiacGlyphs[i],
-    //       style: const TextStyle(fontSize: 22, color: Colors.deepPurple),
-    //     ),
-    //     textDirection: TextDirection.ltr,
-    //   )..layout();
-    //   textPainter.paint(canvas, Offset(zx - 12, zy - 12));
-    // }
-
     // Draw planets with glyphs - outermost
     if (chartData['planets'] is List) {
       final planets = chartData['planets'] as List;
@@ -221,7 +186,7 @@ class NatalWheelPainter extends CustomPainter {
 
       for (final planet in planets) {
         final deg = (planet['longitude'] ?? planet['full_degree'] ?? 0).toDouble();
-        final angle = (-pi / 2) - (deg - ascDegree) * pi / 180;
+        final angle = (-pi) - (deg - ascDegree) * pi / 180; // Rotated base
         final px = center.dx + planetRadius * cos(angle);
         final py = center.dy + planetRadius * sin(angle);
 
@@ -239,10 +204,9 @@ class NatalWheelPainter extends CustomPainter {
       }
     }
 
-    // Draw Ascendant and MC labels (outer)
+    // Draw Ascendant and MC labels (fixed positions)
     if (chartData['ascendant'] != null) {
-      final ascDegree = (chartData['ascendant'] as num).toDouble();
-      final angle = (-pi / 2) - ascDegree * pi / 180;
+      final angle = -pi; // Left (9 o'clock)
       final ax = center.dx + (radius + 50) * cos(angle);
       final ay = center.dy + (radius + 50) * sin(angle);
 
@@ -256,8 +220,7 @@ class NatalWheelPainter extends CustomPainter {
       textPainter.paint(canvas, Offset(ax - 12, ay - 12));
     }
     if (chartData['mc'] != null) {
-      final deg = (chartData['mc'] as num).toDouble();
-      final angle = (-pi / 2) - deg * pi / 180;
+      final angle = -pi / 2; // Top (12 o'clock)
       final mx = center.dx + (radius + 50) * cos(angle);
       final my = center.dy + (radius + 50) * sin(angle);
 
@@ -290,14 +253,14 @@ class NatalWheelPainter extends CustomPainter {
       for (int i = 0; i < planets.length; i++) {
         final p1 = planets[i];
         final deg1 = (p1['longitude'] ?? p1['full_degree'] ?? 0).toDouble();
-        final angle1 = (-pi / 2) - (deg1 - ascDegree) * pi / 180;
+        final angle1 = (-pi) - (deg1 - ascDegree) * pi / 180; // Rotated base
         final p1x = center.dx + aspectRadius * cos(angle1);
         final p1y = center.dy + aspectRadius * sin(angle1);
 
         for (int j = i + 1; j < planets.length; j++) {
           final p2 = planets[j];
           final deg2 = (p2['longitude'] ?? p2['full_degree'] ?? 0).toDouble();
-          final angle2 = (-pi / 2) - (deg2 - ascDegree) * pi / 180;
+          final angle2 = (-pi) - (deg2 - ascDegree) * pi / 180; // Rotated base
           final p2x = center.dx + aspectRadius * cos(angle2);
           final p2y = center.dy + aspectRadius * sin(angle2);
 
@@ -351,8 +314,8 @@ class NatalWheelPainter extends CustomPainter {
         final deg2 = planetDegrees[name2];
 
         if (deg1 != null && deg2 != null) {
-          final angle1 = (-pi / 2) - (deg1 - ascDegree) * pi / 180;
-          final angle2 = (-pi / 2) - (deg2 - ascDegree) * pi / 180;
+          final angle1 = (-pi) - (deg1 - ascDegree) * pi / 180; // Rotated base
+          final angle2 = (-pi) - (deg2 - ascDegree) * pi / 180; // Rotated base
 
           final p1 = Offset(center.dx + aspectRadius * cos(angle1), center.dy + aspectRadius * sin(angle1));
           final p2 = Offset(center.dx + aspectRadius * cos(angle2), center.dy + aspectRadius * sin(angle2));
@@ -380,7 +343,7 @@ class NatalWheelPainter extends CustomPainter {
 
     // Draw zodiac glyphs between aspects circle and zodiac outer circle
     for (int i = 0; i < 12; i++) {
-      final startAngle = (-pi / 2) - ((i * 30 - ascDegree) * pi / 180);
+      final startAngle = (-pi) - ((i * 30 - ascDegree) * pi / 180); // Rotated base
       final sweepAngle = 30 * pi / 180;
       final midAngle = startAngle + sweepAngle / 2;
       // Position between aspects circle and zodiac outer circle (e.g., at radius - 40)
@@ -399,9 +362,7 @@ class NatalWheelPainter extends CustomPainter {
 
     // Draw thick border at each zodiac sign boundary (inner)
     for (int i = 0; i < 12; i++) {
-      final angle = (-pi / 2) - ((i * 30 - ascDegree) * pi / 180);
-      // final start = center + Offset(zodiacRadiusInner * cos(angle), zodiacRadiusInner * sin(angle));
-      // final end = center + Offset(zodiacRadiusOuter * cos(angle), zodiacRadiusOuter * sin(angle));
+      final angle = (-pi) - ((i * 30 - ascDegree) * pi / 180); // Rotated base
       final glyphRadius = radius - 60;
       final start = center + Offset(zodiacRadiusInner * cos(angle), zodiacRadiusInner * sin(angle));
       final end = center + Offset(glyphRadius * cos(angle), glyphRadius * sin(angle));
@@ -413,90 +374,6 @@ class NatalWheelPainter extends CustomPainter {
           ..strokeWidth = 1,
       );
     }
-
-    // Draw quadrant indicators (lines and labels)
-    // for (int i = 0; i < 4; i++) {
-    //   final angle = (-pi / 2) - ((i * 90 - ascDegree) * pi / 180);
-    //   final start = center;
-    //   final end = center + Offset((radius + 20) * cos(angle), (radius + 20) * sin(angle));
-    //   canvas.drawLine(
-    //     start,
-    //     end,
-    //     Paint()
-    //       ..color = Colors.red
-    //       ..strokeWidth = 2,
-    //   );
-
-    //   // Label the quadrant
-    //   final labelRadius = radius + 30;
-    //   final lx = center.dx + labelRadius * cos(angle);
-    //   final ly = center.dy + labelRadius * sin(angle);
-    //   final textPainter = TextPainter(
-    //     text: TextSpan(
-    //       text: 'Q${i + 1}',
-    //       style: const TextStyle(fontSize: 14, color: Colors.red, fontWeight: FontWeight.bold),
-    //     ),
-    //     textDirection: TextDirection.ltr,
-    //   )..layout();
-    //   textPainter.paint(canvas, Offset(lx - 10, ly - 10));
-    // }
-
-    // Draw arrows for the four angles (ASC, DSC, MC, IC) - inward pointing, no line
-    // final angles = [
-    //   {'name': 'ASC', 'offset': 0.0, 'color': Colors.red},
-    //   {'name': 'DSC', 'offset': 180.0, 'color': Colors.blue},
-    //   {'name': 'MC', 'offset': 90.0, 'color': Colors.green},
-    //   {'name': 'IC', 'offset': 270.0, 'color': Colors.purple},
-    // ];
-
-    // for (final angleData in angles) {
-    //   final offset = angleData['offset'] as double;
-    //   final color = angleData['color'] as Color;
-    //   final angle = (-pi / 2) - ((offset - ascDegree) * pi / 180);
-    //   final start = center;
-    //   final end = center + Offset((radius + 20) * cos(angle), (radius + 20) * sin(angle));
-
-    //   // Remove the line - only draw the arrowhead
-
-    //   // Draw arrowhead (triangle at the end, pointing inward)
-    //   final arrowLength = 10.0;
-    //   final arrowAngle = pi / 6; // 30 degrees
-    //   // Reverse direction for inward pointing
-    //   final direction = atan2(start.dy - end.dy, start.dx - end.dx);
-    //   final arrowPoint1 = Offset(
-    //     end.dx - arrowLength * cos(direction - arrowAngle),
-    //     end.dy - arrowLength * sin(direction - arrowAngle),
-    //   );
-    //   final arrowPoint2 = Offset(
-    //     end.dx - arrowLength * cos(direction + arrowAngle),
-    //     end.dy - arrowLength * sin(direction + arrowAngle),
-    //   );
-
-    //   final path = Path()
-    //     ..moveTo(end.dx, end.dy)
-    //     ..lineTo(arrowPoint1.dx, arrowPoint1.dy)
-    //     ..lineTo(arrowPoint2.dx, arrowPoint2.dy)
-    //     ..close();
-    //   canvas.drawPath(
-    //     path,
-    //     Paint()
-    //       ..color = color
-    //       ..style = PaintingStyle.fill,
-    //   );
-
-    //   // Label the angle
-    //   final labelRadius = radius + 35;
-    //   final lx = center.dx + labelRadius * cos(angle);
-    //   final ly = center.dy + labelRadius * sin(angle);
-    //   final textPainter = TextPainter(
-    //     text: TextSpan(
-    //       text: angleData['name'] as String,
-    //       style: TextStyle(fontSize: 14, color: color, fontWeight: FontWeight.bold),
-    //     ),
-    //     textDirection: TextDirection.ltr,
-    //   )..layout();
-    //   textPainter.paint(canvas, Offset(lx - 15, ly - 10));
-    // }
   }
 
   @override
