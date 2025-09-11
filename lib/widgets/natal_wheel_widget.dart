@@ -36,6 +36,9 @@ class NatalWheel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final planets = (chartData['planets'] as List);
+    final houses = (chartData['houses'] as List);
+
     return GestureDetector(
       onTapUp: (details) {
         // You can add interactivity here (e.g., show a dialog with planet info)
@@ -64,15 +67,17 @@ class NatalWheelPainter extends CustomPainter {
       ..strokeWidth = 2;
     canvas.drawCircle(center, radius, circlePaint);
 
-    final houses = chartData['houses'] as List;
-    final ascDegree = (houses.first['start_degree'] as num).toDouble();
+    final houses = (chartData['houses'] is List) ? chartData['houses'] as List : [];
+    final ascDegree = (houses.isNotEmpty && houses.first['start_degree'] is num)
+        ? (houses.first['start_degree'] as num).toDouble()
+        : 0.0;
     final zodiacRadiusOuter = radius + 24;
     final zodiacRadiusInner = radius + 4;
 
     // Draw zodiac segments (arcs)
     for (int i = 0; i < 12; i++) {
       // Fixed zodiac: Aries at 9 o'clock, Taurus at 8 o'clock, etc.
-      final startAngle = (-pi / 2) + ((i * 30 - ascDegree) * pi / 180);
+      final startAngle = (-pi / 2) - ((i * 30 - ascDegree) * pi / 180);
       final sweepAngle = 30 * pi / 180;
       final arcPaint = Paint()
         ..color = Colors.primaries[i % Colors.primaries.length].withOpacity(0.15)
@@ -112,8 +117,8 @@ class NatalWheelPainter extends CustomPainter {
     if (chartData['houses'] is List) {
       final houses = chartData['houses'] as List;
       for (int i = 0; i < houses.length; i++) {
-        final deg = (houses[i]['degree'] ?? 0).toDouble();
-        final angle = (-pi / 2) + deg * pi / 180;
+        final deg = (houses[i]['start_degree'] ?? 0).toDouble();
+        final angle = (-pi / 2) - deg * pi / 180;
         final hx = center.dx + (radius + 10) * cos(angle);
         final hy = center.dy + (radius + 10) * sin(angle);
 
@@ -134,7 +139,7 @@ class NatalWheelPainter extends CustomPainter {
       for (int i = 0; i < planets.length; i++) {
         final p1 = planets[i];
         final deg1 = (p1['norm_degree'] ?? p1['degree'])?.toDouble() ?? 0.0;
-        final angle1 = (-pi / 2) + deg1 * pi / 180;
+        final angle1 = (-pi / 2) - deg1 * pi / 180;
         final aspectRadius = radius - 60; // or adjust as needed
         final p1x = center.dx + aspectRadius * cos(angle1);
         final p1y = center.dy + aspectRadius * sin(angle1);
@@ -142,7 +147,7 @@ class NatalWheelPainter extends CustomPainter {
         for (int j = i + 1; j < planets.length; j++) {
           final p2 = planets[j];
           final deg2 = (p2['norm_degree'] ?? p2['degree'])?.toDouble() ?? 0.0;
-          final angle2 = (-pi / 2) + deg2 * pi / 180;
+          final angle2 = (-pi / 2) - deg2 * pi / 180;
           final p2x = center.dx + aspectRadius * cos(angle2);
           final p2y = center.dy + aspectRadius * sin(angle2);
 
@@ -175,7 +180,7 @@ class NatalWheelPainter extends CustomPainter {
       final planets = chartData['planets'] as List;
       for (final planet in planets) {
         final deg = (planet['norm_degree'] ?? planet['degree'])?.toDouble() ?? 0.0;
-        final angle = (-pi / 2) + (deg - ascDegree) * pi / 180;
+        final angle = (-pi / 2) - (deg - ascDegree) * pi / 180;
         final innerRadius = radius - 120;
         final px = center.dx + innerRadius * cos(angle);
         final py = center.dy + innerRadius * sin(angle);
@@ -197,7 +202,7 @@ class NatalWheelPainter extends CustomPainter {
     // Draw Ascendant and MC labels if present
     if (chartData['ascendant'] != null) {
       final ascDegree = (chartData['ascendant']?['degree'] ?? 0).toDouble();
-      final angle = (-pi / 2) + ascDegree * pi / 180;
+      final angle = (-pi / 2) - ascDegree * pi / 180;
       final ax = center.dx + (radius + 30) * cos(angle);
       final ay = center.dy + (radius + 30) * sin(angle);
 
@@ -212,7 +217,7 @@ class NatalWheelPainter extends CustomPainter {
     }
     if (chartData['mc'] != null) {
       final deg = (chartData['mc']['degree'] ?? 0).toDouble();
-      final angle = (-pi / 2) + deg * pi / 180;
+      final angle = (-pi / 2) - deg * pi / 180;
       final mx = center.dx + (radius + 30) * cos(angle);
       final my = center.dy + (radius + 30) * sin(angle);
 
@@ -228,7 +233,7 @@ class NatalWheelPainter extends CustomPainter {
 
     // Draw degree ruler (every 5° a small tick, every 30° a big tick)
     for (int deg = 0; deg < 360; deg += 5) {
-      final angle = (-pi / 2) + ((deg - ascDegree) * pi / 180);
+      final angle = (-pi / 2) - ((deg - ascDegree) * pi / 180);
       final isMajor = deg % 30 == 0;
       final tickStart = center + Offset(
         (zodiacRadiusOuter + 2) * cos(angle),
@@ -249,7 +254,7 @@ class NatalWheelPainter extends CustomPainter {
 
     // Draw thick border at each zodiac sign boundary
     for (int i = 0; i < 12; i++) {
-      final angle = (-pi / 2) + ((i * 30 - ascDegree) * pi / 180);
+      final angle = (-pi / 2) - ((i * 30 - ascDegree) * pi / 180);
       final start = center + Offset(zodiacRadiusInner * cos(angle), zodiacRadiusInner * sin(angle));
       final end = center + Offset(zodiacRadiusOuter * cos(angle), zodiacRadiusOuter * sin(angle));
       canvas.drawLine(
@@ -263,7 +268,7 @@ class NatalWheelPainter extends CustomPainter {
 
     for (int i = 0; i < 12; i++) {
       final deg = i * 30;
-      final angle = (-pi / 2) + ((deg - ascDegree) * pi / 180);
+      final angle = (-pi / 2) - ((deg - ascDegree) * pi / 180);
       final tx = center.dx + (zodiacRadiusOuter + 22) * cos(angle);
       final ty = center.dy + (zodiacRadiusOuter + 22) * sin(angle);
       final textPainter = TextPainter(
@@ -296,9 +301,10 @@ class NatalWheelPainter extends CustomPainter {
       final ascDegree = (houses.first['start_degree'] as num).toDouble();
       for (int i = 0; i < houses.length; i++) {
         final house = houses[i];
-        final startDeg = (house['start_degree'] as num).toDouble();
+        final startDeg = (house['start_degree'] is num) ? (house['start_degree'] as num).toDouble() : 0.0;
+        final endDeg = (house['end_degree'] is num) ? (house['end_degree'] as num).toDouble() : 0.0;
         // Angle for house cusp line
-        final angle = (-pi / 2) + (startDeg - ascDegree) * pi / 180;
+        final angle = (-pi / 2) - (startDeg - ascDegree) * pi / 180;
 
         // Draw house cusp line from inner circle to outer zodiac circle
         final cuspStart = center + Offset(innerCircleRadius * cos(angle), innerCircleRadius * sin(angle));
@@ -312,11 +318,15 @@ class NatalWheelPainter extends CustomPainter {
         );
 
         // Draw house number at the middle of the house
-        final endDeg = (house['end_degree'] as num).toDouble();
-        // Handle wrap-around for houses crossing 360°/0°
-        double midDeg = startDeg + (((endDeg - startDeg + 360) % 360) / 2);
-        midDeg = midDeg % 360;
-        final midAngle = (-pi / 2) + (midDeg - ascDegree) * pi / 180;
+        double midDeg;
+        if (endDeg > startDeg) {
+          midDeg = startDeg + (endDeg - startDeg) / 2;
+        } else {
+          // Handle wrap-around (e.g., House 12 to House 1)
+          midDeg = startDeg + ((endDeg + 360 - startDeg) / 2);
+          if (midDeg > 360) midDeg -= 360;
+        }
+        final midAngle = (-pi / 2) - (midDeg - ascDegree) * pi / 180;
         final nx = center.dx + numberRadius * cos(midAngle);
         final ny = center.dy + numberRadius * sin(midAngle);
         final textPainter = TextPainter(
@@ -358,8 +368,8 @@ class NatalWheelPainter extends CustomPainter {
         final deg2 = planetDegrees[name2];
 
         if (deg1 != null && deg2 != null && ascDegree != null) {
-          final angle1 = (-pi / 2) + (deg1 - ascDegree) * pi / 180;
-          final angle2 = (-pi / 2) + (deg2 - ascDegree) * pi / 180;
+          final angle1 = (-pi / 2) - (deg1 - ascDegree) * pi / 180;
+          final angle2 = (-pi / 2) - (deg2 - ascDegree) * pi / 180;
 
           // Place aspect lines at a radius inside the wheel
           final aspectRadius = innerCircleRadius;
@@ -395,5 +405,5 @@ class NatalWheelPainter extends CustomPainter {
 }
 
 double angleForDegree(double deg, double ascDegree) {
-  return (-pi / 2) + (deg - ascDegree) * pi / 180;
+  return (-pi / 2) - (deg - ascDegree) * pi / 180; // Changed + to -
 }

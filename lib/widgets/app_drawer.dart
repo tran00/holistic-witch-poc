@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../natal_chart_page_with_sweph.dart';  // Add this import
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -32,18 +33,31 @@ class AppDrawer extends StatelessWidget {
               Navigator.pushReplacementNamed(context, '/tirage3');
             },
           ),
+          // ListTile(
+          //   leading: const Icon(Icons.auto_awesome),
+          //   title: const Text('Tirage 4 cartes prédictif'),
+          //   onTap: () {
+          //     Navigator.pushReplacementNamed(context, '/tirage4');
+          //   },
+          // ),
+          // ListTile(
+          //   leading: const Icon(Icons.account_tree),
+          //   title: const Text('Tirage 6 cartes pyramide'),
+          //   onTap: () {
+          //     Navigator.pushReplacementNamed(context, '/tirage6');
+          //   },
+          // ),
           ListTile(
-            leading: const Icon(Icons.auto_awesome),
-            title: const Text('Tirage 4 cartes prédictif'),
+            leading: const Icon(Icons.stars),
+            title: const Text('Natal Chart (SwEph)'),
             onTap: () {
-              Navigator.pushReplacementNamed(context, '/tirage4');
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.account_tree),
-            title: const Text('Tirage 6 cartes pyramide'),
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/tirage6');
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NatalChartPageWithSweph(),
+                ),
+              );
             },
           ),
           ListTile(

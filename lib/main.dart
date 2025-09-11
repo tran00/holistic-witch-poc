@@ -11,6 +11,7 @@ import 'four_card_draw_page.dart';
 import 'six_card_draw_page.dart';
 import 'widgets/app_drawer.dart';
 import 'natal_chart_page.dart';
+import 'natal_chart_page_with_sweph.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -57,6 +58,7 @@ class MyApp extends StatelessWidget {
         '/tirage6': (context) => const SixCardDrawPage(),
         '/numerologie': (context) => const NumerologiePage(),
         '/natal': (context) => const NatalChartPage(),
+        '/natal-sweph': (context) => const NatalChartPageWithSweph(),
       },
     );
   }
@@ -89,20 +91,27 @@ class HomePage extends StatelessWidget {
                 Navigator.pushNamed(context, '/tirage3');
               },
             ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.star),
-              label: const Text('Tirage 4 cartes prédictif'),
-              onPressed: () {
-                Navigator.pushNamed(context, '/tirage4');
-              },
-            ),
+            // const SizedBox(height: 16),
+            // ElevatedButton.icon(
+            //   icon: const Icon(Icons.star),
+            //   label: const Text('Tirage 4 cartes prédictif'),
+            //   onPressed: () {
+            //     Navigator.pushNamed(context, '/tirage4');
+            //   },
+            // ),
+            // const SizedBox(height: 16),
+            // ElevatedButton.icon(
+            //   icon: const Icon(Icons.account_tree),
+            //   label: const Text('Tirage 6 cartes pyramide'),
+            //   onPressed: () {
+            //     Navigator.pushNamed(context, '/tirage6');
+            //   },
             const SizedBox(height: 16),
             ElevatedButton.icon(
               icon: const Icon(Icons.account_tree),
-              label: const Text('Tirage 6 cartes pyramide'),
+              label: const Text('Natal Chart (SwEph)'),
               onPressed: () {
-                Navigator.pushNamed(context, '/tirage6');
+                Navigator.pushNamed(context, '/natal-sweph');
               },
             ),
             const SizedBox(height: 16),
