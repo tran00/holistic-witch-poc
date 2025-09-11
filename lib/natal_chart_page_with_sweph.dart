@@ -128,8 +128,12 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
       // Calculate houses (using Placidus system)
       await _calculateHouses(julianDay, latitude, longitude, chartData);
 
-      _convertChartDataToWheelFormat(chartData);
+      // First: Group planets into houses (while houses is still a Map)
       groupPlanetsIntoHouses(chartData);
+
+      // Second: Convert to wheel format (converts Map to List)
+      _convertChartDataToWheelFormat(chartData);
+
       print('🔍 Planets data: ${chartData['planets']}');
       print('🔍 Houses data: ${chartData['houses']}');
 
@@ -187,17 +191,16 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
 
   Future<void> _calculateHouses(double julianDay, double latitude, double longitude, Map<String, dynamic> chartData) async {
     try {
-      // Try with different house system enums
       HouseCuspData? result;
       
       try {
-        result = Sweph.swe_houses(julianDay, latitude, longitude, Hsys.P);
+        result = Sweph.swe_houses(julianDay, latitude, longitude, Hsys.P); // Placidus
       } catch (e1) {
         try {
-          result = Sweph.swe_houses(julianDay, latitude, longitude, Hsys.K);
+          result = Sweph.swe_houses(julianDay, latitude, longitude, Hsys.K); // Koch
         } catch (e2) {
           try {
-            result = Sweph.swe_houses(julianDay, latitude, longitude, Hsys.E);
+            result = Sweph.swe_houses(julianDay, latitude, longitude, Hsys.E); // Equal
           } catch (e3) {
             print('❌ All house systems failed: $e1, $e2, $e3');
             return;
@@ -206,16 +209,27 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
       }
       
       if (result != null) {
-        final houses = result.cusps;
-        final houseCusps = <double>[];
-        for (int i = 0; i < houses.length; i++) {
-          houseCusps.add(houses[i]);
+        final houseCusps = result.cusps;
+        
+        // Debug: Print raw house cusps
+        print('🏠 Raw house cusps from SwEph:');
+        for (int i = 0; i < houseCusps.length && i < 12; i++) {
+          print('House ${i + 1}: ${houseCusps[i].toStringAsFixed(2)}°');
         }
-
-        for (int i = 0; i < houseCusps.length; i++) {
-          final houseLon = houseCusps[i];
+        
+        // Only take the first 12 house cusps (ignore any extra)
+        final validCusps = houseCusps.take(12).toList();
+        
+        // Store the Ascendant for reference
+        final ascendant = validCusps[0]; // First house cusp = Ascendant
+        chartData['ascendant'] = ascendant;
+        
+        print('🏠 Ascendant: ${ascendant.toStringAsFixed(2)}°');
+        
+        for (int i = 0; i < validCusps.length; i++) {
+          final houseLon = validCusps[i];
+          final nextHouseLon = validCusps[(i + 1) % validCusps.length];
           final sign = _getZodiacSign(houseLon);
-          final nextHouseLon = houseCusps[(i + 1) % houseCusps.length];
           
           chartData['houses']['House ${i + 1}'] = {
             'longitude': houseLon,
@@ -225,17 +239,17 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
             'start_degree': houseLon,
             'end_degree': nextHouseLon,
             'house_id': i + 1,
+            'planets': [],
           };
+          
+          print('House ${i + 1}: start=${houseLon.toStringAsFixed(2)}°, end=${nextHouseLon.toStringAsFixed(2)}°, sign=${sign}');
         }
+      } else {
+        print('❌ No house data returned from SwEph');
       }
     } catch (e) {
       print('❌ Error calculating houses: $e');
-      // Add some dummy houses for testing
-      for (int i = 0; i < 12; i++) {
-        chartData['houses']['House ${i + 1}'] = {
-          'formatted': 'House calculation error',
-        };
-      }
+      // No dummy houses - leave houses empty
     }
   }
 
@@ -294,36 +308,45 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
   }
 
   void groupPlanetsIntoHouses(Map<String, dynamic> chartData) {
-    final houses = chartData['houses'] as List;
-    final planets = chartData['planets'] as List;
+    final houses = chartData['houses'] as Map;
+    final planets = chartData['planets'] as Map;
 
     // Ensure each house has a planets list
-    for (final house in houses) {
+    for (final house in houses.values) {
       house['planets'] = [];
     }
 
-    for (final planet in planets) {
-      // Use 'degree' or 'longitude' as the absolute zodiac degree
-      final degree = (planet['longitude'] ?? planet['full_degree'] ?? planet['degree'])?.toDouble() ?? 0.0;
+    for (final planet in planets.values) {
+      final degree = (planet['longitude'] ?? 0.0).toDouble();
       planet['full_degree'] = degree;
 
       // Find the house this planet belongs to
-      for (int i = 0; i < houses.length; i++) {
-        final house = houses[i];
+      bool assigned = false;
+      for (int i = 1; i <= 12; i++) {
+        final house = houses['House $i'];
+        if (house == null) continue;
+        
         final start = (house['start_degree'] as num).toDouble();
         final end = (house['end_degree'] as num).toDouble();
 
         bool inHouse = false;
         if (start < end) {
+          // Normal case: house doesn't cross 0°
           inHouse = degree >= start && degree < end;
         } else {
-          // Wrap around 360°
+          // Wrap-around case: house crosses 0° (e.g., House 12 to House 1)
           inHouse = degree >= start || degree < end;
         }
+        
         if (inHouse) {
           house['planets'].add(planet);
+          assigned = true;
           break;
         }
+      }
+      
+      if (!assigned) {
+        print('⚠️ Planet ${planet['name']} at ${degree}° not assigned to any house');
       }
     }
   }

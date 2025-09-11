@@ -179,7 +179,7 @@ class NatalWheelPainter extends CustomPainter {
     if (chartData['planets'] is List) {
       final planets = chartData['planets'] as List;
       for (final planet in planets) {
-        final deg = (planet['norm_degree'] ?? planet['degree'])?.toDouble() ?? 0.0;
+        final deg = (planet['longitude'] ?? planet['full_degree'] ?? 0).toDouble();
         final angle = (-pi / 2) - (deg - ascDegree) * pi / 180;
         final innerRadius = radius - 120;
         final px = center.dx + innerRadius * cos(angle);
@@ -201,7 +201,7 @@ class NatalWheelPainter extends CustomPainter {
 
     // Draw Ascendant and MC labels if present
     if (chartData['ascendant'] != null) {
-      final ascDegree = (chartData['ascendant']?['degree'] ?? 0).toDouble();
+      final ascDegree = (chartData['ascendant'] as num).toDouble();
       final angle = (-pi / 2) - ascDegree * pi / 180;
       final ax = center.dx + (radius + 30) * cos(angle);
       final ay = center.dy + (radius + 30) * sin(angle);
@@ -216,7 +216,7 @@ class NatalWheelPainter extends CustomPainter {
       textPainter.paint(canvas, Offset(ax - 12, ay - 12));
     }
     if (chartData['mc'] != null) {
-      final deg = (chartData['mc']['degree'] ?? 0).toDouble();
+      final deg = (chartData['mc'] as num).toDouble();
       final angle = (-pi / 2) - deg * pi / 180;
       final mx = center.dx + (radius + 30) * cos(angle);
       final my = center.dy + (radius + 30) * sin(angle);
@@ -301,8 +301,14 @@ class NatalWheelPainter extends CustomPainter {
       final ascDegree = (houses.first['start_degree'] as num).toDouble();
       for (int i = 0; i < houses.length; i++) {
         final house = houses[i];
-        final startDeg = (house['start_degree'] is num) ? (house['start_degree'] as num).toDouble() : 0.0;
-        final endDeg = (house['end_degree'] is num) ? (house['end_degree'] as num).toDouble() : 0.0;
+
+        // final startDeg = (house['start_degree'] is num) ? (house['start_degree'] as num).toDouble() : 0.0;
+        // final endDeg = (house['end_degree'] is num) ? (house['end_degree'] as num).toDouble() : 0.0;
+
+        final startDeg = (houses[i]['start_degree'] as num).toDouble();
+        final endDeg = (houses[i]['end_degree'] as num).toDouble();
+          
+
         // Angle for house cusp line
         final angle = (-pi / 2) - (startDeg - ascDegree) * pi / 180;
 
@@ -326,7 +332,9 @@ class NatalWheelPainter extends CustomPainter {
           midDeg = startDeg + ((endDeg + 360 - startDeg) / 2);
           if (midDeg > 360) midDeg -= 360;
         }
+        
         final midAngle = (-pi / 2) - (midDeg - ascDegree) * pi / 180;
+        
         final nx = center.dx + numberRadius * cos(midAngle);
         final ny = center.dy + numberRadius * sin(midAngle);
         final textPainter = TextPainter(
@@ -352,10 +360,7 @@ class NatalWheelPainter extends CustomPainter {
       }
     }
     if (chartData['ascendant'] != null) {
-      planetDegrees['Ascendant'] = (chartData['ascendant']['degree'] as num).toDouble();
-    }
-    if (chartData['mc'] != null) {
-      planetDegrees['MC'] = (chartData['mc']['degree'] as num).toDouble();
+      planetDegrees['Ascendant'] = (chartData['ascendant'] as num).toDouble();
     }
 
     // ...now you can use planetDegrees in your aspect drawing code...
