@@ -7,6 +7,8 @@ import 'widgets/natal_wheel_widget.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
+import 'package:flutter_dotenv/flutter_dotenv.dart'; // Add this
+import 'openai_client.dart'; // Add this
 
 class NatalChartPageWithSweph extends StatefulWidget {
   const NatalChartPageWithSweph({super.key});
@@ -30,9 +32,18 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
 
   bool _isInitialized = false;
 
+  String? _chartInterpretation;
+  bool _isLoadingInterpretation = false;
+  late final OpenAIClient _openAI;
+
+  String? _chartPrompt;
+  bool _showPromptEditor = false;
+  final TextEditingController _promptController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
+    _openAI = OpenAIClient(dotenv.env['OPENAI_API_KEY'] ?? '');
     _initializeApp();
   }
 
@@ -124,33 +135,49 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
       final localHour = int.parse(timeParts[0]);
       final localMinute = int.parse(timeParts[1]);
 
+      // Declare UTC variables outside try block
+      int utcYear = localYear;
+      int utcMonth = localMonth;
+      int utcDay = localDay;
+      int utcHour = localHour;
+      int utcMinute = localMinute;
+
       // Get timezone for birth location
-      final timezoneName = _getTimezoneFromCoordinates(latitude, longitude);
-      final location = tz.getLocation(timezoneName);
+      String timezoneName;
+      try {
+        timezoneName = _getTimezoneFromCoordinates(latitude, longitude);
+        final location = tz.getLocation(timezoneName);
+        
+        // Create local date/time at birth location
+        final localDateTime = tz.TZDateTime(
+          location,
+          localYear,
+          localMonth,
+          localDay,
+          localHour,
+          localMinute,
+        );
 
-      // Create local date/time at birth location
-      final localDateTime = tz.TZDateTime(
-        location,
-        localYear,
-        localMonth,
-        localDay,
-        localHour,
-        localMinute,
-      );
-
-      // Convert to UTC
-      final utcDateTime = localDateTime.toUtc();
-
-      // Use UTC values for sweph
-      final utcYear = utcDateTime.year;
-      final utcMonth = utcDateTime.month;
-      final utcDay = utcDateTime.day;
-      final utcHour = utcDateTime.hour;
-      final utcMinute = utcDateTime.minute;
-
-      print('📍 Birth location timezone: $timezoneName');
-      print('🕐 Local time: $localDateTime');
-      print('🌍 UTC time: $utcDateTime');
+        // Convert to UTC
+        final utcDateTime = localDateTime.toUtc();
+        
+        print('📍 Birth location timezone: $timezoneName');
+        print('🕐 Local time: $localDateTime');
+        print('🌍 UTC time: $utcDateTime');
+        
+        // Update UTC values
+        utcYear = utcDateTime.year;
+        utcMonth = utcDateTime.month;
+        utcDay = utcDateTime.day;
+        utcHour = utcDateTime.hour;
+        utcMinute = utcDateTime.minute;
+        
+      } catch (e) {
+        print('⚠️ Timezone error: $e, using local time as UTC');
+        timezoneName = 'UTC';
+        
+        // Fallback: treat input time as UTC (already set above)
+      }
 
       // Calculate Julian Day using UTC
       final julianDay = Sweph.swe_julday(
@@ -384,7 +411,7 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
       _timeController.text = '04:35';
       _latController.text = '48.8848';
       _lonController.text = '2.2674';
-      _nameController.text = 'Pamela Chart';
+      _nameController.text = 'Pamela';
       _cityController.text = 'Neuilly-sur-Seine'; // Set city for Pamela
       _chartData = null;
       _error = null;
@@ -397,7 +424,7 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
       _timeController.text = '18:56';
       _latController.text = '35.18';
       _lonController.text = '94.18';
-      _nameController.text = 'Tran Chart';
+      _nameController.text = 'Trân';
       _cityController.text = ''; // Clear city field
       _chartData = null;
       _error = null;
@@ -507,6 +534,144 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
     return "$deg°${min.toString().padLeft(2, '0')}'${sec.toString().padLeft(2, '0')}\"";
   }
 
+  Future<void> _askOpenAIInterpretation() async {
+    if (_chartData == null) return;
+    
+    setState(() {
+      _isLoadingInterpretation = true;
+      _chartInterpretation = null;
+    });
+
+    try {
+      // Build comprehensive chart data for OpenAI
+      final planets = _chartData!['planets'] as List;
+      final houses = _chartData!['houses'] as List;
+      
+      String prompt = """En tant qu'astrologue expert, analyse cette carte natale complète et donne une interprétation détaillée:
+
+INFORMATIONS DE NAISSANCE:
+- Nom: ${_chartData!['name'] ?? 'Personne'}
+- Date: ${_chartData!['date']}
+- Heure: ${_chartData!['time']}
+- Lieu: ${_chartData!['location']}
+
+POSITIONS PLANÉTAIRES:""";
+
+      // Add planetary positions
+      for (final planet in planets) {
+        final name = planet['name'];
+        final sign = planet['sign'];
+        final degree = planet['longitude'] ?? planet['full_degree'];
+        final house = _findPlanetHouse(planet, houses);
+        prompt += "\n- $name en $sign ${degree?.toStringAsFixed(1)}° (Maison $house)";
+      }
+
+      prompt += "\n\nMAISONS ASTROLOGIQUES:";
+      
+      // Add house cusps
+      for (int i = 0; i < houses.length; i++) {
+        final house = houses[i];
+        final sign = house['sign'];
+        final degree = house['longitude'];
+        prompt += "\n- Maison ${i + 1}: $sign ${degree?.toStringAsFixed(1)}°";
+      }
+
+      prompt += """
+
+DEMANDE D'ANALYSE:
+1. Analyse la personnalité générale basée sur le Soleil, la Lune et l'Ascendant
+2. Décris les traits dominants de caractère
+3. Explique les aspects majeurs entre planètes et leur influence
+4. Analyse les secteurs de vie importants (maisons occupées)
+5. Donne des conseils pour l'évolution personnelle
+6. Mentionne les défis et opportunités principaux
+
+Sois précis, bienveillant et constructif dans ton analyse.
+
+Tu t'adresses à l'utilisateur de manière directe et personnelle.""";
+
+      // Store the prompt
+      setState(() {
+        _chartPrompt = prompt;
+        _promptController.text = prompt;
+      });
+
+      final answer = await _openAI.sendMessage(prompt);
+      
+      if (mounted) {
+        setState(() {
+          _chartInterpretation = answer;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _chartInterpretation = 'Erreur lors de l\'analyse: $e';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingInterpretation = false;
+        });
+      }
+    }
+  }
+
+  // Helper function to find which house a planet is in
+  int _findPlanetHouse(Map<String, dynamic> planet, List houses) {
+    final planetDegree = (planet['longitude'] ?? planet['full_degree'] ?? 0).toDouble();
+    
+    for (int i = 0; i < houses.length; i++) {
+      final houseStart = (houses[i]['start_degree'] as num).toDouble();
+      final houseEnd = (houses[i]['end_degree'] as num).toDouble();
+      
+      if (houseEnd > houseStart) {
+        if (planetDegree >= houseStart && planetDegree < houseEnd) {
+          return i + 1;
+        }
+      } else {
+        // Handle houses that cross 0°
+        if (planetDegree >= houseStart || planetDegree < houseEnd) {
+          return i + 1;
+        }
+      }
+    }
+    return 1; // Default to house 1 if not found
+  }
+
+  Future<void> _sendCustomPrompt() async {
+    if (_promptController.text.isEmpty) return;
+    
+    setState(() {
+      _isLoadingInterpretation = true;
+      _chartInterpretation = null;
+      _chartPrompt = _promptController.text;
+    });
+
+    try {
+      final answer = await _openAI.sendMessage(_promptController.text);
+      
+      if (mounted) {
+        setState(() {
+          _chartInterpretation = answer;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _chartInterpretation = 'Erreur lors de l\'analyse: $e';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingInterpretation = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -591,9 +756,9 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
                     controller: controller,
                     focusNode: focusNode,
                     decoration: const InputDecoration(
-                      labelText: 'City of Birth',
+                      labelText: 'City of Birth (optional)', // Add (optional)
                       border: OutlineInputBorder(),
-                      hintText: 'Type your city...',
+                      hintText: 'Type your city... (coordinates are sufficient)',
                     ),
                   );
                 },
@@ -698,6 +863,204 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
                 const Divider(height: 40),
                 _buildChartDisplay(),
                 NatalWheel(chartData: _chartData!),
+                
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: _isLoadingInterpretation ? null : _askOpenAIInterpretation,
+                      icon: _isLoadingInterpretation 
+                          ? const SizedBox(
+                              width: 16, 
+                              height: 16, 
+                              child: CircularProgressIndicator(strokeWidth: 2)
+                            )
+                          : const Icon(Icons.psychology),
+                      label: const Text('Analyse OpenAI'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepPurple,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _showPromptEditor = !_showPromptEditor;
+                        });
+                      },
+                      icon: Icon(_showPromptEditor ? Icons.keyboard_arrow_up : Icons.edit),
+                      label: Text(_showPromptEditor ? 'Masquer' : 'Modifier prompt'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Prompt editor section
+                if (_showPromptEditor) ...[
+                  const SizedBox(height: 20),
+                  Container(
+                    margin: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.blue[50],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.blue[200]!),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.edit, color: Colors.blue),
+                            SizedBox(width: 8),
+                            Text(
+                              'Éditeur de Prompt OpenAI',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _promptController,
+                          maxLines: 15,
+                          decoration: const InputDecoration(
+                            hintText: 'Écrivez votre question ou modifiez le prompt...',
+                            border: OutlineInputBorder(),
+                            filled: true,
+                            fillColor: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: _isLoadingInterpretation ? null : _sendCustomPrompt,
+                              icon: _isLoadingInterpretation 
+                                  ? const SizedBox(
+                                      width: 16, 
+                                      height: 16, 
+                                      child: CircularProgressIndicator(strokeWidth: 2)
+                                    )
+                                  : const Icon(Icons.send),
+                              label: const Text('Envoyer'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                _promptController.clear();
+                              },
+                              icon: const Icon(Icons.clear),
+                              label: const Text('Effacer'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // Display prompt used
+                if (_chartPrompt != null) ...[
+                  const SizedBox(height: 20),
+                  Container(
+                    margin: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.code, color: Colors.grey),
+                            SizedBox(width: 8),
+                            Text(
+                              '📤 Prompt envoyé à OpenAI',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey[300]!),
+                          ),
+                          child: SelectableText(
+                            _chartPrompt!,
+                            style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // Display interpretation
+                if (_chartInterpretation != null) ...[
+                  const SizedBox(height: 20),
+                  Container(
+                    margin: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.amber[50],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.amber[200]!),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.psychology, color: Colors.deepPurple),
+                            SizedBox(width: 8),
+                            Text(
+                              '📥 Réponse d\'OpenAI',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.deepPurple,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        SelectableText(
+                          _chartInterpretation!,
+                          style: const TextStyle(fontSize: 14, height: 1.5),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ],
           ),
@@ -710,18 +1073,18 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        SelectableText(
           _chartData!['name'] ?? 'Natal Chart',
           style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Text('Date: ${_chartData!['date']}'),
-        Text('Time: ${_chartData!['time']}'),
-        Text('Location: ${_chartData!['location']}'),
+        SelectableText('Date: ${_chartData!['date']}'),
+        SelectableText('Time: ${_chartData!['time']}'),
+        SelectableText('Location: ${_chartData!['location']}'),
         const SizedBox(height: 20),
 
         // Planets section
-        const Text(
+        const SelectableText(
           'Planetary Positions',
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
@@ -734,14 +1097,16 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
                 children: [
                   SizedBox(
                     width: 80,
-                    child: Text(
+                    child: SelectableText(
                       planet['name'] ?? '',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
-                  Text(
-                    '${planet['sign'] ?? ''} - ${planet['longitude'] != null ? formatDegreeMinute(planet['longitude']) : (planet['formatted'] ?? '')}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  Expanded(
+                    child: SelectableText(
+                      '${planet['sign'] ?? ''} - ${planet['longitude'] != null ? formatDegreeMinute(planet['longitude']) : (planet['formatted'] ?? '')}',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ],
               ),
@@ -751,7 +1116,7 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
         const SizedBox(height: 20),
 
         // Houses section
-        const Text(
+        const SelectableText(
           'House Cusps (Placidus)',
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
@@ -764,14 +1129,16 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
                 children: [
                   SizedBox(
                     width: 80,
-                    child: Text(
+                    child: SelectableText(
                       'House ${entry.key + 1}',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
-                  Text(
-                    '${entry.value['sign'] ?? ''} - ${entry.value['longitude'] != null ? formatDegreeMinute(entry.value['longitude']) : (entry.value['formatted'] ?? '')}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  Expanded(
+                    child: SelectableText(
+                      '${entry.value['sign'] ?? ''} - ${entry.value['longitude'] != null ? formatDegreeMinute(entry.value['longitude']) : (entry.value['formatted'] ?? '')}',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ],
               ),
@@ -788,6 +1155,8 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
     _timeController.dispose();
     _latController.dispose();
     _lonController.dispose();
+    _cityController.dispose();
+    _promptController.dispose(); // Add this
     super.dispose();
   }
 
@@ -822,28 +1191,34 @@ Future<List<Map<String, dynamic>>> fetchCitySuggestions(String query) async {
 }
 
 String _getTimezoneFromCoordinates(double latitude, double longitude) {
-  // Simple timezone mapping based on longitude
-  // For more accuracy, you'd use a timezone API or library
-  final offsetHours = (longitude / 15).round();
-
-  // Common timezone mappings for major regions
-  if (latitude >= 45 && longitude >= -5 && longitude <= 25) {
-    return 'Europe/Paris'; // Western Europe
-  } else if (latitude >= 25 && latitude <= 50 && longitude >= -125 && longitude <= -65) {
+  // Common timezone mappings for major regions with valid timezone names
+  
+  // Europe
+  if (latitude >= 35 && latitude <= 70 && longitude >= -10 && longitude <= 40) {
+    if (longitude >= -5 && longitude <= 25) {
+      return 'Europe/Paris'; // Western/Central Europe
+    } else if (longitude >= 25 && longitude <= 40) {
+      return 'Europe/Bucharest'; // Eastern Europe
+    }
+  }
+  
+  // North America
+  if (latitude >= 25 && latitude <= 70 && longitude >= -170 && longitude <= -50) {
     if (longitude >= -85) return 'America/New_York'; // Eastern US
     else if (longitude >= -105) return 'America/Chicago'; // Central US
-    else return 'America/Denver'; // Mountain US
-  } else if (latitude >= 25 && latitude <= 50 && longitude >= -125 && longitude <= -110) {
-    return 'America/Los_Angeles'; // Pacific US
+    else if (longitude >= -125) return 'America/Denver'; // Mountain US
+    else return 'America/Los_Angeles'; // Pacific US
   }
-
-  // Fallback: estimate UTC offset from longitude
-  final offset = (longitude / 15).round();
-  if (offset >= 0) {
-    return 'Etc/GMT-$offset';
-  } else {
-    return 'Etc/GMT+${-offset}';
+  
+  // Asia
+  if (latitude >= 0 && latitude <= 70 && longitude >= 40 && longitude <= 180) {
+    if (longitude >= 40 && longitude <= 80) return 'Europe/Moscow'; // Western Asia
+    else if (longitude >= 80 && longitude <= 120) return 'Asia/Shanghai'; // Central/Eastern Asia
+    else return 'Asia/Tokyo'; // Far East Asia
   }
+  
+  // Default fallback to UTC for unknown regions
+  return 'UTC';
 }
 
 // Example function to get timezone from an external API

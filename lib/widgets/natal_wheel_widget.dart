@@ -30,6 +30,8 @@ const planetGlyphs = {
   'Chiron': '⚷',
 };
 
+const debugDrawLineToPlanet = false;
+
 class NatalWheel extends StatelessWidget {
   final Map<String, dynamic> chartData;
   const NatalWheel({super.key, required this.chartData});
@@ -135,7 +137,7 @@ class NatalWheelPainter extends CustomPainter {
       final houses = chartData['houses'] as List;
       final houseLineInner = zodiacRadiusOuter; // Start at zodiac outer
       final houseLineOuter = zodiacRadiusOuter + 25; // Shortened to +10
-      final numberRadius = radius + 10; // House numbers at outer
+      final numberRadius = radius + 5; // House numbers at outer
 
       for (int i = 0; i < houses.length; i++) {
         final house = houses[i];
@@ -171,7 +173,7 @@ class NatalWheelPainter extends CustomPainter {
         final textPainter = TextPainter(
           text: TextSpan(
             text: '${house['house_id']}',
-            style: const TextStyle(fontSize: 18, color: Colors.deepPurple, fontWeight: FontWeight.bold),
+            style: const TextStyle(fontSize: 14, color: Colors.deepPurple, fontWeight: FontWeight.bold),
           ),
           textDirection: TextDirection.ltr,
         )..layout();
@@ -193,7 +195,8 @@ class NatalWheelPainter extends CustomPainter {
         final planetName = planet['name'] ?? '';
         final glyph = planetGlyphs[planetName] ?? planet['short_name'] ?? '?';
 
-        final textPainter = TextPainter(
+        // Draw planet glyph
+        final glyphPainter = TextPainter(
           text: TextSpan(
             text: glyph,
             style: const TextStyle(fontSize: 28, color: Colors.black),
@@ -201,35 +204,72 @@ class NatalWheelPainter extends CustomPainter {
           textDirection: TextDirection.ltr,
         )..layout();
         
-        // Center the text properly using its actual dimensions
-        textPainter.paint(
+        // Center the glyph
+        glyphPainter.paint(
           canvas, 
           Offset(
-            px - textPainter.width / 2,   // Center horizontally
-            py - textPainter.height / 2,  // Center vertically
+            px - glyphPainter.width / 2,   // Center horizontally
+            py - glyphPainter.height / 2,  // Center vertically
           ),
+        );
+
+        // Calculate degrees and minutes
+        final degrees = deg.floor();
+        final minutes = ((deg - degrees) * 60).round();
+        
+        // Draw degree text next to planet
+        final degreeText = '$degrees°${minutes.toString().padLeft(2, '0')}';
+        final degreePainter = TextPainter(
+          text: TextSpan(
+            text: degreeText,
+            style: const TextStyle(
+              fontSize: 10, 
+              color: Colors.black87,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        
+        // Determine if planet is on left side of wheel (6 o'clock to 12 o'clock)
+        // Convert angle to 0-2π range and check if it's in the left half
+        final normalizedAngle = (angle + 2 * pi) % (2 * pi);
+        final isOnLeftSide = normalizedAngle > pi / 2 && normalizedAngle < 3 * pi / 2;
+        
+        // Position text on left or right side based on position
+        final textOffsetX = isOnLeftSide 
+            ? px - glyphPainter.width / 2 - degreePainter.width - 4  // Left side of glyph
+            : px + glyphPainter.width / 2 + 4;  // Right side of glyph
+        final textOffsetY = py - degreePainter.height / 2; // Vertically centered
+        
+        degreePainter.paint(
+          canvas,
+          Offset(textOffsetX, textOffsetY),
         );
       }
     }
+    
     // Draw lines from center to planets
-    if (chartData['planets'] is List) {
-      final planets = chartData['planets'] as List;
-      final planetRadius = radius + 40;
+    if(debugDrawLineToPlanet) {
+      if (chartData['planets'] is List) {
+        final planets = chartData['planets'] as List;
+        final planetRadius = radius + 40;
 
-      for (final planet in planets) {
-        final deg = (planet['longitude'] ?? planet['full_degree'] ?? 0).toDouble();
-        final angle = (-pi) - (deg - ascDegree) * pi / 180; // Rotated base
-        final px = center.dx + planetRadius * cos(angle);
-        final py = center.dy + planetRadius * sin(angle);
+        for (final planet in planets) {
+          final deg = (planet['longitude'] ?? planet['full_degree'] ?? 0).toDouble();
+          final angle = (-pi) - (deg - ascDegree) * pi / 180; // Rotated base
+          final px = center.dx + planetRadius * cos(angle);
+          final py = center.dy + planetRadius * sin(angle);
 
-        // Draw line from center to planet
-        canvas.drawLine(
-          center,
-          Offset(px, py),
-          Paint()
-            ..color = Colors.grey.withOpacity(0.5)
-            ..strokeWidth = 1,
-        );
+          // Draw line from center to planet
+          canvas.drawLine(
+            center,
+            Offset(px, py),
+            Paint()
+              ..color = Colors.grey.withOpacity(0.5)
+              ..strokeWidth = 1,
+          );
+        }
       }
     }
 
