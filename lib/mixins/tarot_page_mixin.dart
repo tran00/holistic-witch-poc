@@ -1,7 +1,7 @@
 // mixins/tarot_page_mixin.dart
 import 'package:flutter/material.dart';
 import '../services/tarot_service.dart';
-import '../services/openai_service.dart';
+import '../services/openai_tarot_service.dart';
 import '../services/prompt_service.dart';
 
 mixin TarotPageMixin<T extends StatefulWidget> on State<T> {
@@ -22,8 +22,8 @@ mixin TarotPageMixin<T extends StatefulWidget> on State<T> {
   List<int> selectedIndices = <int>[];
   bool showingDeck = false;
   List<int> shuffledDeckOrder = <int>[];
-  
-  late OpenAIService openAI;
+
+  late OpenAITarotService openAI;
   final TextEditingController questionController = TextEditingController();
 
   @override
@@ -34,7 +34,7 @@ mixin TarotPageMixin<T extends StatefulWidget> on State<T> {
 
   void initializeServices() async {
     await TarotService.loadTarotMeanings();
-    openAI = OpenAIService();
+    openAI = OpenAITarotService();
   }
 
   @override

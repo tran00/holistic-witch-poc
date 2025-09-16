@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'services/tarot_service.dart';
 import 'services/prompt_service.dart';
-import 'services/openai_service.dart';
+import 'services/openai_tarot_service.dart';
 import 'mixins/tarot_page_mixin.dart';
 import 'widgets/deck_selector.dart';
 import 'widgets/app_drawer.dart';
