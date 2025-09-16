@@ -8,17 +8,15 @@ const bool DISABLE_OPENAI = false;
 class OpenAIClient {
   final String apiKey;
 
-  OpenAIClient(this.apiKey) {
-    if (apiKey.isEmpty) {
-      print('⚠️ Warning: OpenAI API key is empty');
-    }
-  }
+  OpenAIClient(this.apiKey);
 
-  Future<String> sendMessage(String message) async {
+  Future<String> sendMessage(String prompt) async {
     if (DISABLE_OPENAI) {
       print('🤖 OpenAI DISABLED - returning mock response');
-      await Future.delayed(const Duration(seconds: 1));
-      return "Mock response: Votre question a été reçue. Les cartes tirées offrent des perspectives intéressantes pour votre situation.";
+      // For now, return a mock response
+      // Replace this with your actual OpenAI implementation
+      await Future.delayed(const Duration(seconds: 2));
+      return 'Mock response for: ${prompt.substring(0, 50)}...';
     }
 
     // Real OpenAI implementation (only runs if DISABLE_OPENAI is false)
@@ -26,7 +24,7 @@ class OpenAIClient {
       throw Exception('API key is not configured');
     }
 
-    if (message.isEmpty) {
+    if (prompt.isEmpty) {
       throw Exception('Message cannot be empty');
     }
 
@@ -40,7 +38,7 @@ class OpenAIClient {
       body: jsonEncode({
         "model": "gpt-3.5-turbo",
         "messages": [
-          {"role": "user", "content": message}
+          {"role": "user", "content": prompt}
         ]
       }),
     );
