@@ -68,6 +68,7 @@ flutter:
   assets:
     - .env
     - assets/
+    - assets/numerologie.json
     - assets/tarot.json
     - assets/sweph/
 
