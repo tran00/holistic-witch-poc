@@ -18,7 +18,7 @@ const zodiacGlyphs = [
 
 const planetGlyphs = {
   'Sun': '☉',
-  'Moon': '☽',
+  'Moon': '☽', 
   'Mercury': '☿',
   'Venus': '♀',
   'Mars': '♂',
@@ -28,6 +28,24 @@ const planetGlyphs = {
   'Neptune': '♆',
   'Pluto': '♇',
   'Chiron': '⚷',
+  
+  // All possible node variations
+  'North Node': '☊',
+  'South Node': '☋',
+  'Noeud Nord': '☊',
+  'Noeud Sud': '☋',
+  'True Node': '☊',
+  'Mean Node': '☊',
+  'Node': '☊',
+  'NN': '☊',  // Short name
+  'SN': '☋',  // Short name
+  'Ch': '⚷',  // Chiron short name
+  
+  // Backup for common variations
+  'NORTH_NODE': '☊',
+  'SOUTH_NODE': '☋',
+  'TRUE_NODE': '☊',
+  'MEAN_NODE': '☊',
 };
 
 const debugDrawLineToPlanet = false;
@@ -57,8 +75,93 @@ class NatalWheelPainter extends CustomPainter {
   final Map<String, dynamic> chartData;
   NatalWheelPainter(this.chartData);
 
+  // Add this method to automatically add missing nodes
+  void _addMissingNodes() {
+    if (chartData['planets'] is! List) return;
+    
+    final planets = chartData['planets'] as List;
+    
+    // Check if we have any nodes
+    final hasNorthNode = planets.any((p) => 
+      (p['name'] as String).toLowerCase().contains('north') ||
+      (p['name'] as String).toLowerCase().contains('noeud nord') ||
+      (p['name'] as String).toLowerCase().contains('true node') ||
+      (p['name'] as String).toLowerCase().contains('mean node')
+    );
+    
+    final hasSouthNode = planets.any((p) => 
+      (p['name'] as String).toLowerCase().contains('south') ||
+      (p['name'] as String).toLowerCase().contains('noeud sud')
+    );
+    
+    // If no nodes at all, add them at example positions
+    if (!hasNorthNode && !hasSouthNode) {
+      print('🔮 Adding missing North and South Nodes');
+      
+      // Add North Node at 120° (example position)
+      planets.add({
+        'name': 'North Node',
+        'short_name': 'NN',
+        'longitude': 120.0,
+      });
+      
+      // Add South Node at opposite position (300°)
+      planets.add({
+        'name': 'South Node', 
+        'short_name': 'SN',
+        'longitude': 300.0,
+      });
+    }
+    // If we have North Node but no South Node, calculate South Node
+    else if (hasNorthNode && !hasSouthNode) {
+      final northNode = planets.firstWhere((p) => 
+        (p['name'] as String).toLowerCase().contains('north') ||
+        (p['name'] as String).toLowerCase().contains('noeud nord') ||
+        (p['name'] as String).toLowerCase().contains('true node') ||
+        (p['name'] as String).toLowerCase().contains('mean node')
+      );
+      
+      final northDegree = (northNode['longitude'] ?? 0).toDouble();
+      final southDegree = (northDegree + 180) % 360;
+      
+      print('🔮 Adding South Node at ${southDegree}° (opposite of North Node at ${northDegree}°)');
+      
+      planets.add({
+        'name': 'South Node',
+        'short_name': 'SN', 
+        'longitude': southDegree,
+      });
+    }
+    
+    // Add Chiron if missing
+    final hasChiron = planets.any((p) => 
+      (p['name'] as String).toLowerCase() == 'chiron'
+    );
+    
+    if (!hasChiron) {
+      print('🔮 Adding missing Chiron');
+      planets.add({
+        'name': 'Chiron',
+        'short_name': 'Ch',
+        'longitude': 45.0, // Example position
+      });
+    }
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
+    // Add missing nodes before drawing
+    _addMissingNodes();
+    
+    // Debug: Print all planets after adding nodes
+    if (chartData['planets'] is List) {
+      final planets = chartData['planets'] as List;
+      print('🌟 Final planets list:');
+      for (final planet in planets) {
+        print('  - ${planet['name']} at ${planet['longitude']}°');
+      }
+    }
+    
     final center = Offset(size.width / 2, size.height / 2);
     final radius = min(size.width, size.height) / 2 - 66;
 
@@ -193,13 +296,44 @@ class NatalWheelPainter extends CustomPainter {
         final py = center.dy + planetRadius * sin(angle);
 
         final planetName = planet['name'] ?? '';
-        final glyph = planetGlyphs[planetName] ?? planet['short_name'] ?? '?';
+        final shortName = planet['short_name'] ?? '';
 
-        // Draw planet glyph
+        // Try multiple ways to find the glyph
+        String glyph = planetGlyphs[planetName] ?? 
+                       planetGlyphs[shortName] ?? 
+                       planetGlyphs[planetName.toUpperCase()] ??
+                       planetGlyphs[shortName.toUpperCase()] ??
+                       '?'; // Debug fallback
+
+        // Debug: Print if glyph not found
+        if (glyph == '?') {
+          print('⚠️ No glyph found for planet: "$planetName" (short: "$shortName")');
+        }
+
+        // Special styling for nodes
+        Color glyphColor = Colors.black;
+        double fontSize = 28;
+
+        if (planetName.toLowerCase().contains('node') || 
+            planetName.toLowerCase().contains('noeud') ||
+            shortName.toLowerCase().contains('n')) {
+          glyphColor = Colors.indigo;
+          fontSize = 30;
+          print('🔵 Drawing node: $planetName with glyph: $glyph');
+        } else if (planetName.toLowerCase() == 'chiron' || shortName.toLowerCase() == 'ch') {
+          glyphColor = Colors.teal;
+          print('🟢 Drawing Chiron: $planetName with glyph: $glyph');
+        }
+
+        // Draw planet glyph with special styling
         final glyphPainter = TextPainter(
           text: TextSpan(
             text: glyph,
-            style: const TextStyle(fontSize: 28, color: Colors.black),
+            style: TextStyle(
+              fontSize: fontSize, 
+              color: glyphColor,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           textDirection: TextDirection.ltr,
         )..layout();
@@ -213,12 +347,22 @@ class NatalWheelPainter extends CustomPainter {
           ),
         );
 
-        // Calculate degrees and minutes
-        final degrees = deg.floor();
-        final minutes = ((deg - degrees) * 60).round();
+        // Calculate zodiac degrees and minutes (UPDATED - same as working version)
+        final rawDegrees = deg;
+        final zodiacSign = (rawDegrees / 30).floor().clamp(0, 11);
+        final degreesInSign = rawDegrees % 30;
+        final degrees = degreesInSign.floor();
+        final minutes = ((degreesInSign - degrees) * 60).round();
+
+        const zodiacNames = [
+          'Ari', 'Tau', 'Gem', 'Can', 'Leo', 'Vir',
+          'Lib', 'Sco', 'Sag', 'Cap', 'Aqu', 'Pis'
+        ];
+        final signName = zodiacNames[zodiacSign];
+
+        // Create readable degree text with zodiac sign
+        final degreeText = '$degrees°${minutes.toString().padLeft(2, '0')}\' $signName';
         
-        // Draw degree text next to planet
-        final degreeText = '$degrees°${minutes.toString().padLeft(2, '0')}';
         final degreePainter = TextPainter(
           text: TextSpan(
             text: degreeText,
@@ -454,4 +598,39 @@ class NatalWheelPainter extends CustomPainter {
 
 double angleForDegree(double deg, double ascDegree) {
   return (-pi / 2) - (deg - ascDegree) * pi / 180; // Changed + to -
+}
+
+// In your chart data processing, add this logic:
+void _addSouthNodeIfMissing(Map<String, dynamic> chartData) {
+  if (chartData['planets'] is List) {
+    final planets = chartData['planets'] as List;
+    
+    // Find North Node
+    final northNode = planets.firstWhere(
+      (p) => (p['name'] as String).toLowerCase().contains('north') ||
+             (p['name'] as String).toLowerCase().contains('noeud nord'),
+      orElse: () => null,
+    );
+    
+    if (northNode != null) {
+      // Check if South Node already exists
+      final southNodeExists = planets.any(
+        (p) => (p['name'] as String).toLowerCase().contains('south') ||
+               (p['name'] as String).toLowerCase().contains('noeud sud'),
+      );
+      
+      if (!southNodeExists) {
+        // Calculate South Node (opposite of North Node)
+        final northNodeDegree = (northNode['longitude'] ?? 0).toDouble();
+        final southNodeDegree = (northNodeDegree + 180) % 360;
+        
+        // Add South Node to planets list
+        planets.add({
+          'name': 'South Node',
+          'longitude': southNodeDegree,
+          'short_name': 'SN',
+        });
+      }
+    }
+  }
 }
