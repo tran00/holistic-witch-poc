@@ -1,13 +1,19 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:sweph/sweph.dart';
 import 'widgets/app_drawer.dart';
 import 'widgets/natal_wheel_widget.dart';
+import 'package:flutter_typeahead/flutter_typeahead.dart';
+import 'package:timezone/timezone.dart' as tz;
+import 'package:timezone/data/latest.dart' as tz_data;
 
 class NatalChartPageWithSweph extends StatefulWidget {
   const NatalChartPageWithSweph({super.key});
 
   @override
-  State<NatalChartPageWithSweph> createState() => _NatalChartPageWithSwephState();
+  State<NatalChartPageWithSweph> createState() =>
+      _NatalChartPageWithSwephState();
 }
 
 class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
@@ -16,23 +22,45 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
   final TextEditingController _latController = TextEditingController();
   final TextEditingController _lonController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
-  
+  final TextEditingController _cityController = TextEditingController();
+
   Map<String, dynamic>? _chartData;
   bool _isLoading = false;
   String? _error;
 
+  bool _isInitialized = false;
+
   @override
   void initState() {
     super.initState();
-    
-    // Set default values for birth data
-    _dateController.text = '08/05/1980';  // May 8, 1980
-    _timeController.text = '04:35';       // 4:35 AM
-    _latController.text = '48.8848';      // Neuilly-sur-Seine latitude
-    _lonController.text = '2.2674';       // Neuilly-sur-Seine longitude
-    _nameController.text = 'Sample Chart'; // Default name
-    
-    _initializeSweph();
+    _initializeApp();
+  }
+
+  Future<void> _initializeApp() async {
+    try {
+      // Initialize timezone data first
+      tz_data.initializeTimeZones();
+      print('✅ Timezone database initialized');
+      
+      // Then initialize SwEph
+      await _initializeSweph();
+      
+      // Set default values for birth data
+      _dateController.text = '08/05/1980';
+      _timeController.text = '04:35';
+      _latController.text = '48.8848';
+      _lonController.text = '2.2674';
+      _nameController.text = 'Sample Chart';
+      
+      setState(() {
+        _isInitialized = true;
+      });
+    } catch (e) {
+      print('❌ Error initializing app: $e');
+      setState(() {
+        _error = 'Error initializing app: $e';
+      });
+    }
   }
 
   Future<void> _initializeSweph() async {
@@ -49,9 +77,16 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
   }
 
   Future<void> _calculateChart() async {
-    if (_dateController.text.isEmpty || 
-        _timeController.text.isEmpty || 
-        _latController.text.isEmpty || 
+    if (!_isInitialized) {
+      setState(() {
+        _error = 'App is still initializing. Please wait...';
+      });
+      return;
+    }
+
+    if (_dateController.text.isEmpty ||
+        _timeController.text.isEmpty ||
+        _latController.text.isEmpty ||
         _lonController.text.isEmpty) {
       setState(() {
         _error = 'Please fill all fields';
@@ -68,7 +103,7 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
       // Parse date and time
       final dateParts = _dateController.text.split('/');
       final timeParts = _timeController.text.split(':');
-      
+
       if (dateParts.length != 3 || timeParts.length != 2) {
         throw Exception('Invalid date or time format');
       }
@@ -89,8 +124,19 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
       final localHour = int.parse(timeParts[0]);
       final localMinute = int.parse(timeParts[1]);
 
-      // Create a local DateTime object (assumes input is local time)
-      final localDateTime = DateTime(localYear, localMonth, localDay, localHour, localMinute);
+      // Get timezone for birth location
+      final timezoneName = _getTimezoneFromCoordinates(latitude, longitude);
+      final location = tz.getLocation(timezoneName);
+
+      // Create local date/time at birth location
+      final localDateTime = tz.TZDateTime(
+        location,
+        localYear,
+        localMonth,
+        localDay,
+        localHour,
+        localMinute,
+      );
 
       // Convert to UTC
       final utcDateTime = localDateTime.toUtc();
@@ -102,6 +148,10 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
       final utcHour = utcDateTime.hour;
       final utcMinute = utcDateTime.minute;
 
+      print('📍 Birth location timezone: $timezoneName');
+      print('🕐 Local time: $localDateTime');
+      print('🌍 UTC time: $utcDateTime');
+
       // Calculate Julian Day using UTC
       final julianDay = Sweph.swe_julday(
         utcYear,
@@ -110,12 +160,16 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
         utcHour + utcMinute / 60.0,
         CalendarType.SE_GREG_CAL,
       );
-      
+
       // Calculate planetary positions
       Map<String, dynamic> chartData = {
-        'name': _nameController.text.isNotEmpty ? _nameController.text : 'Natal Chart',
-        'date': '${day.toString().padLeft(2, '0')}/${month.toString().padLeft(2, '0')}/$year',
-        'time': '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}',
+        'name': _nameController.text.isNotEmpty
+            ? _nameController.text
+            : 'Natal Chart',
+        'date':
+            '${day.toString().padLeft(2, '0')}/${month.toString().padLeft(2, '0')}/$year',
+        'time':
+            '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}',
         'location': 'Lat: $latitude, Lon: $longitude',
         'julianDay': julianDay,
         'planets': {},
@@ -124,7 +178,7 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
 
       // Calculate planetary positions
       await _calculatePlanets(julianDay, chartData);
-      
+
       // Calculate houses (using Placidus system)
       await _calculateHouses(julianDay, latitude, longitude, chartData);
 
@@ -141,7 +195,6 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
         _chartData = chartData;
         _isLoading = false;
       });
-
     } catch (e) {
       print('❌ Error calculating chart: $e');
       setState(() {
@@ -151,7 +204,10 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
     }
   }
 
-  Future<void> _calculatePlanets(double julianDay, Map<String, dynamic> chartData) async {
+  Future<void> _calculatePlanets(
+    double julianDay,
+    Map<String, dynamic> chartData,
+  ) async {
     // Use proper HeavenlyBody enum values
     final planets = {
       'Sun': HeavenlyBody.SE_SUN,
@@ -168,7 +224,11 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
 
     for (final entry in planets.entries) {
       try {
-        final result = Sweph.swe_calc_ut(julianDay, entry.value, SwephFlag.SEFLG_SPEED);
+        final result = Sweph.swe_calc_ut(
+          julianDay,
+          entry.value,
+          SwephFlag.SEFLG_SPEED,
+        );
         final longitude = result.longitude;
         final sign = _getZodiacSign(longitude);
         final degree = longitude % 30;
@@ -189,34 +249,54 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
     }
   }
 
-  Future<void> _calculateHouses(double julianDay, double latitude, double longitude, Map<String, dynamic> chartData) async {
+  Future<void> _calculateHouses(
+    double julianDay,
+    double latitude,
+    double longitude,
+    Map<String, dynamic> chartData,
+  ) async {
     try {
       HouseCuspData? result;
-      
+
       try {
-        result = Sweph.swe_houses(julianDay, latitude, longitude, Hsys.P); // Placidus
+        result = Sweph.swe_houses(
+          julianDay,
+          latitude,
+          longitude,
+          Hsys.P,
+        ); // Placidus
       } catch (e1) {
         try {
-          result = Sweph.swe_houses(julianDay, latitude, longitude, Hsys.K); // Koch
+          result = Sweph.swe_houses(
+            julianDay,
+            latitude,
+            longitude,
+            Hsys.K,
+          ); // Koch
         } catch (e2) {
           try {
-            result = Sweph.swe_houses(julianDay, latitude, longitude, Hsys.E); // Equal
+            result = Sweph.swe_houses(
+              julianDay,
+              latitude,
+              longitude,
+              Hsys.E,
+            ); // Equal
           } catch (e3) {
             print('❌ All house systems failed: $e1, $e2, $e3');
             return;
           }
         }
       }
-      
+
       if (result != null) {
         final houseCusps = result.cusps;
-        
+
         // Debug: Print raw house cusps
         print('🏠 Raw house cusps from SwEph:');
         for (int i = 0; i < houseCusps.length && i < 12; i++) {
           print('House ${i + 1}: ${houseCusps[i].toStringAsFixed(2)}°');
         }
-        
+
         // Only take the first 12 house cusps starting from index 1 (ignore any extra)
         final validCusps = houseCusps.skip(1).take(12).toList();
 
@@ -225,7 +305,7 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
         for (int i = 0; i < validCusps.length; i++) {
           print('House ${i + 1}: ${validCusps[i].toStringAsFixed(2)}°');
         }
-        
+
         // Store the Ascendant for reference
         final ascendant = validCusps[0]; // First house cusp = Ascendant
         chartData['ascendant'] = ascendant;
@@ -241,7 +321,7 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
           final houseLon = validCusps[i];
           final nextHouseLon = validCusps[(i + 1) % validCusps.length];
           final sign = _getZodiacSign(houseLon);
-          
+
           chartData['houses']['House ${i + 1}'] = {
             'longitude': houseLon,
             'sign': sign,
@@ -252,8 +332,10 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
             'house_id': i + 1,
             'planets': [],
           };
-          
-          print('House ${i + 1}: start=${houseLon.toStringAsFixed(2)}°, end=${nextHouseLon.toStringAsFixed(2)}°, sign=${sign}');
+
+          print(
+            'House ${i + 1}: start=${houseLon.toStringAsFixed(2)}°, end=${nextHouseLon.toStringAsFixed(2)}°, sign=${sign}',
+          );
         }
       } else {
         print('❌ No house data returned from SwEph');
@@ -266,11 +348,20 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
 
   String _getZodiacSign(double longitude) {
     final signs = [
-      'Aries', 'Taurus', 'Gemini', 'Cancer',
-      'Leo', 'Virgo', 'Libra', 'Scorpio',
-      'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'
+      'Aries',
+      'Taurus',
+      'Gemini',
+      'Cancer',
+      'Leo',
+      'Virgo',
+      'Libra',
+      'Scorpio',
+      'Sagittarius',
+      'Capricorn',
+      'Aquarius',
+      'Pisces',
     ];
-    
+
     final signIndex = (longitude / 30).floor() % 12;
     return signs[signIndex];
   }
@@ -287,13 +378,27 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
     });
   }
 
-  void _resetToDefaults() {
+  void _resetToPamelaDefaults() {
     setState(() {
       _dateController.text = '08/05/1980';
       _timeController.text = '04:35';
       _latController.text = '48.8848';
       _lonController.text = '2.2674';
-      _nameController.text = 'Sample Chart';
+      _nameController.text = 'Pamela Chart';
+      _cityController.text = 'Neuilly-sur-Seine'; // Set city for Pamela
+      _chartData = null;
+      _error = null;
+    });
+  }
+
+  void _resetToTranDefaults() {
+    setState(() {
+      _dateController.text = '23/05/1975';
+      _timeController.text = '18:56';
+      _latController.text = '35.18';
+      _lonController.text = '94.18';
+      _nameController.text = 'Tran Chart';
+      _cityController.text = ''; // Clear city field
       _chartData = null;
       _error = null;
     });
@@ -336,7 +441,7 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
       for (int i = 1; i <= 12; i++) {
         final house = houses['House $i'];
         if (house == null) continue;
-        
+
         final start = (house['start_degree'] as num).toDouble();
         final end = (house['end_degree'] as num).toDouble();
 
@@ -348,16 +453,18 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
           // Wrap-around case: house crosses 0° (e.g., House 12 to House 1)
           inHouse = degree >= start || degree < end;
         }
-        
+
         if (inHouse) {
           house['planets'].add(planet);
           assigned = true;
           break;
         }
       }
-      
+
       if (!assigned) {
-        print('⚠️ Planet ${planet['name']} at ${degree}° not assigned to any house');
+        print(
+          '⚠️ Planet ${planet['name']} at ${degree}° not assigned to any house',
+        );
       }
     }
   }
@@ -374,8 +481,18 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
 
     // zodiac sign
     final signs = [
-      "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
-      "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"
+      "Aries",
+      "Taurus",
+      "Gemini",
+      "Cancer",
+      "Leo",
+      "Virgo",
+      "Libra",
+      "Scorpio",
+      "Sagittarius",
+      "Capricorn",
+      "Aquarius",
+      "Pisces",
     ];
     final signIndex = (decimalDegree ~/ 30); // integer division
     final sign = signs[signIndex];
@@ -389,7 +506,6 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
     // return "$sign $deg°${min.toString().padLeft(2, '0')}'${sec.toString().padLeft(2, '0')}\"";
     return "$deg°${min.toString().padLeft(2, '0')}'${sec.toString().padLeft(2, '0')}\"";
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -410,7 +526,7 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
-              
+
               // Input fields
               TextField(
                 controller: _nameController,
@@ -422,7 +538,7 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
               ), // ← Make sure this closing parenthesis and comma are here
 
               const SizedBox(height: 16),
-              
+
               TextField(
                 controller: _dateController,
                 decoration: const InputDecoration(
@@ -433,7 +549,7 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
               ), // ← And here
 
               const SizedBox(height: 16),
-              
+
               TextField(
                 controller: _timeController,
                 decoration: const InputDecoration(
@@ -444,7 +560,58 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
               ), // ← And here
 
               const SizedBox(height: 16),
-              
+
+              // Autocomplete<String>(
+              //   optionsBuilder: (TextEditingValue textEditingValue) async {
+              //     if (textEditingValue.text == '') {
+              //       return const Iterable<String>.empty();
+              //     }
+              //     final suggestions = await fetchCitySuggestions(textEditingValue.text);
+              //     return suggestions;
+              //   },
+              //   fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+              //     return TextField(
+              //       controller: controller,
+              //       focusNode: focusNode,
+              //       decoration: const InputDecoration(
+              //         labelText: 'City of Birth',
+              //         border: OutlineInputBorder(),
+              //         hintText: 'Type your city...',
+              //       ),
+              //     );
+              //   },
+              //   onSelected: (String selection) {
+              //     _cityController.text = selection;
+              //   },
+              // ),
+              TypeAheadField<Map<String, dynamic>>(
+                controller: _cityController,
+                builder: (context, controller, focusNode) {
+                  return TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    decoration: const InputDecoration(
+                      labelText: 'City of Birth',
+                      border: OutlineInputBorder(),
+                      hintText: 'Type your city...',
+                    ),
+                  );
+                },
+                suggestionsCallback: (pattern) async {
+                  return await fetchCitySuggestions(pattern);
+                },
+                itemBuilder: (context, Map<String, dynamic> suggestion) {
+                  return ListTile(title: Text(suggestion['display_name']));
+                },
+                onSelected: (Map<String, dynamic> suggestion) {
+                  _cityController.text = suggestion['display_name'];
+                  _latController.text = suggestion['lat'];
+                  _lonController.text = suggestion['lon'];
+                },
+              ),
+
+              const SizedBox(height: 16),
+
               TextField(
                 controller: _latController,
                 decoration: const InputDecoration(
@@ -456,7 +623,7 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
               ), // ← And here
 
               const SizedBox(height: 16),
-              
+
               TextField(
                 controller: _lonController,
                 decoration: const InputDecoration(
@@ -467,34 +634,50 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
                 keyboardType: TextInputType.number,
               ), // ← And here
 
+              const SizedBox(height: 16),
+
               const SizedBox(height: 24),
-              
+
               // Buttons
               Row(
                 children: [
                   ElevatedButton(
-                    onPressed: _isLoading ? null : _calculateChart,
-                    child: _isLoading 
+                    onPressed: (_isLoading || !_isInitialized) ? null : _calculateChart,
+                    child: _isLoading
                         ? const CircularProgressIndicator()
-                        : const Text('Calculate Natal Chart'),
+                        : !_isInitialized
+                            ? const Text('Initializing...')
+                            : const Text('Calculate Natal Chart'),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 8),
                   ElevatedButton(
-                    onPressed: _resetToDefaults,
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-                    child: const Text('Defaults'),
+                    onPressed: _resetToPamelaDefaults,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                    ),
+                    child: const Text('Pamela'),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: _resetToTranDefaults,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                    ),
+                    child: const Text('Tran'),
+                  ),
+                  const SizedBox(width: 8),
                   ElevatedButton(
                     onPressed: _clearChart,
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey,
+                    ),
                     child: const Text('Clear'),
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               // Error display
               if (_error != null)
                 Container(
@@ -509,7 +692,7 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
                     style: TextStyle(color: Colors.red[800]),
                   ),
                 ),
-              
+
               // Chart display
               if (_chartData != null) ...[
                 const Divider(height: 40),
@@ -598,7 +781,6 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
     );
   }
 
-
   @override
   void dispose() {
     _nameController.dispose();
@@ -618,4 +800,65 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
       }
     });
   }
+}
+
+Future<List<Map<String, dynamic>>> fetchCitySuggestions(String query) async {
+  if (query.isEmpty) return [];
+  final url = Uri.parse(
+    'https://nominatim.openstreetmap.org/search?city=$query&format=json&addressdetails=1&limit=10',
+  );
+  final response = await http.get(url, headers: {'User-Agent': 'YourApp/1.0'});
+  if (response.statusCode == 200) {
+    final List data = json.decode(response.body);
+    return data.map<Map<String, dynamic>>((item) {
+      return {
+        'display_name': item['display_name'] ?? '',
+        'lat': item['lat'] ?? '',
+        'lon': item['lon'] ?? '',
+      };
+    }).toList();
+  }
+  return [];
+}
+
+String _getTimezoneFromCoordinates(double latitude, double longitude) {
+  // Simple timezone mapping based on longitude
+  // For more accuracy, you'd use a timezone API or library
+  final offsetHours = (longitude / 15).round();
+
+  // Common timezone mappings for major regions
+  if (latitude >= 45 && longitude >= -5 && longitude <= 25) {
+    return 'Europe/Paris'; // Western Europe
+  } else if (latitude >= 25 && latitude <= 50 && longitude >= -125 && longitude <= -65) {
+    if (longitude >= -85) return 'America/New_York'; // Eastern US
+    else if (longitude >= -105) return 'America/Chicago'; // Central US
+    else return 'America/Denver'; // Mountain US
+  } else if (latitude >= 25 && latitude <= 50 && longitude >= -125 && longitude <= -110) {
+    return 'America/Los_Angeles'; // Pacific US
+  }
+
+  // Fallback: estimate UTC offset from longitude
+  final offset = (longitude / 15).round();
+  if (offset >= 0) {
+    return 'Etc/GMT-$offset';
+  } else {
+    return 'Etc/GMT+${-offset}';
+  }
+}
+
+// Example function to get timezone from an external API
+Future<String> _getTimezoneFromAPI(double latitude, double longitude) async {
+  try {
+    final url = Uri.parse(
+      'http://api.geonames.org/timezoneJSON?lat=$latitude&lng=$longitude&username=YOUR_USERNAME'
+    );
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return data['timezoneId'] ?? 'UTC';
+    }
+  } catch (e) {
+    print('Error getting timezone: $e');
+  }
+  return 'UTC';
 }

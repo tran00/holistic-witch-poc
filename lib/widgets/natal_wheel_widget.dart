@@ -200,7 +200,36 @@ class NatalWheelPainter extends CustomPainter {
           ),
           textDirection: TextDirection.ltr,
         )..layout();
-        textPainter.paint(canvas, Offset(px - 14, py - 14));
+        
+        // Center the text properly using its actual dimensions
+        textPainter.paint(
+          canvas, 
+          Offset(
+            px - textPainter.width / 2,   // Center horizontally
+            py - textPainter.height / 2,  // Center vertically
+          ),
+        );
+      }
+    }
+    // Draw lines from center to planets
+    if (chartData['planets'] is List) {
+      final planets = chartData['planets'] as List;
+      final planetRadius = radius + 40;
+
+      for (final planet in planets) {
+        final deg = (planet['longitude'] ?? planet['full_degree'] ?? 0).toDouble();
+        final angle = (-pi) - (deg - ascDegree) * pi / 180; // Rotated base
+        final px = center.dx + planetRadius * cos(angle);
+        final py = center.dy + planetRadius * sin(angle);
+
+        // Draw line from center to planet
+        canvas.drawLine(
+          center,
+          Offset(px, py),
+          Paint()
+            ..color = Colors.grey.withOpacity(0.5)
+            ..strokeWidth = 1,
+        );
       }
     }
 
@@ -357,7 +386,10 @@ class NatalWheelPainter extends CustomPainter {
         ),
         textDirection: TextDirection.ltr,
       )..layout();
-      textPainter.paint(canvas, Offset(zx - 12, zy - 12));
+      textPainter.paint(
+        canvas,
+        Offset(zx - textPainter.width / 2, zy - textPainter.height / 2)
+      );
     }
 
     // Draw thick border at each zodiac sign boundary (inner)
