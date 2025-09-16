@@ -530,9 +530,9 @@ Tu t'adresses à l'utilisateur de manière directe et personnelle.""";
     setState(() {
       _nameController.text = 'Tran';
       _dateController.text = '23/05/1975';
-      _timeController.text = '06:56';
+      _timeController.text = '18:56';
       _latController.text = '35.18';
-      _lonController.text = '94.180';
+      _lonController.text = '-94.180';
       _cityController.text = '';
       _chartData = null;
       _error = null;
