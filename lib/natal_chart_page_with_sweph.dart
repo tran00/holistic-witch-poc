@@ -10,6 +10,7 @@ import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'openai_client.dart'; 
 import 'services/geocoding_service.dart';
+import 'utils/astrology_utils.dart';
 
 class NatalChartPageWithSweph extends StatefulWidget {
   const NatalChartPageWithSweph({super.key});
@@ -211,10 +212,10 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
       await _calculateHouses(julianDay, latitude, longitude, chartData);
 
       // First: Group planets into houses (while houses is still a Map)
-      groupPlanetsIntoHouses(chartData);
+      AstrologyUtils.groupPlanetsIntoHouses(chartData);
 
       // Second: Convert to wheel format (converts Map to List)
-      _convertChartDataToWheelFormat(chartData);
+      AstrologyUtils.convertChartDataToWheelFormat(chartData);
 
       print('🔍 Planets data: ${chartData['planets']}');
       print('🔍 Houses data: ${chartData['houses']}');
@@ -258,7 +259,7 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
           SwephFlag.SEFLG_SPEED,
         );
         final longitude = result.longitude;
-        final sign = _getZodiacSign(longitude);
+        final sign = AstrologyUtils.getZodiacSign(longitude);
         final degree = longitude % 30;
         chartData['planets'][entry.key] = {
           'name': entry.key, // <-- This is correct!
@@ -348,7 +349,7 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
         for (int i = 0; i < validCusps.length; i++) {
           final houseLon = validCusps[i];
           final nextHouseLon = validCusps[(i + 1) % validCusps.length];
-          final sign = _getZodiacSign(houseLon);
+          final sign = AstrologyUtils.getZodiacSign(houseLon);
 
           chartData['houses']['House ${i + 1}'] = {
             'longitude': houseLon,
@@ -372,167 +373,6 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
       print('❌ Error calculating houses: $e');
       // No dummy houses - leave houses empty
     }
-  }
-
-  String _getZodiacSign(double longitude) {
-    final signs = [
-      'Aries',
-      'Taurus',
-      'Gemini',
-      'Cancer',
-      'Leo',
-      'Virgo',
-      'Libra',
-      'Scorpio',
-      'Sagittarius',
-      'Capricorn',
-      'Aquarius',
-      'Pisces',
-    ];
-
-    final signIndex = (longitude / 30).floor() % 12;
-    return signs[signIndex];
-  }
-
-  void _clearChart() {
-    setState(() {
-      _chartData = null;
-      _error = null;
-      _nameController.clear();
-      _dateController.clear();
-      _timeController.clear();
-      _latController.clear();
-      _lonController.clear();
-    });
-  }
-
-  void _resetToPamelaDefaults() {
-    setState(() {
-      _dateController.text = '08/05/1980';
-      _timeController.text = '04:35';
-      _latController.text = '48.8848';
-      _lonController.text = '2.2674';
-      _nameController.text = 'Pamela';
-      _cityController.text = 'Neuilly-sur-Seine'; // Set city for Pamela
-      _chartData = null;
-      _error = null;
-    });
-  }
-
-  void _resetToTranDefaults() {
-    setState(() {
-      _dateController.text = '23/05/1975';
-      _timeController.text = '18:56';
-      _latController.text = '35.18';
-      _lonController.text = '94.18';
-      _nameController.text = 'Trân';
-      _cityController.text = ''; // Clear city field
-      _chartData = null;
-      _error = null;
-    });
-  }
-
-  void _convertChartDataToWheelFormat(Map<String, dynamic> chartData) {
-    // Convert houses map to list
-    if (chartData['houses'] is Map) {
-      chartData['houses'] = (chartData['houses'] as Map).values.toList();
-    }
-    // Convert planets map to list
-    if (chartData['planets'] is Map) {
-      chartData['planets'] = (chartData['planets'] as Map).values.toList();
-    }
-    // For each house, ensure 'planets' is a list (even if empty)
-    if (chartData['houses'] is List) {
-      for (var house in chartData['houses']) {
-        if (house is Map && house['planets'] is! List) {
-          house['planets'] = [];
-        }
-      }
-    }
-  }
-
-  void groupPlanetsIntoHouses(Map<String, dynamic> chartData) {
-    final houses = chartData['houses'] as Map;
-    final planets = chartData['planets'] as Map;
-
-    // Ensure each house has a planets list
-    for (final house in houses.values) {
-      house['planets'] = [];
-    }
-
-    for (final planet in planets.values) {
-      final degree = (planet['longitude'] ?? 0.0).toDouble();
-      planet['full_degree'] = degree;
-
-      // Find the house this planet belongs to
-      bool assigned = false;
-      for (int i = 1; i <= 12; i++) {
-        final house = houses['House $i'];
-        if (house == null) continue;
-
-        final start = (house['start_degree'] as num).toDouble();
-        final end = (house['end_degree'] as num).toDouble();
-
-        bool inHouse = false;
-        if (start < end) {
-          // Normal case: house doesn't cross 0°
-          inHouse = degree >= start && degree < end;
-        } else {
-          // Wrap-around case: house crosses 0° (e.g., House 12 to House 1)
-          inHouse = degree >= start || degree < end;
-        }
-
-        if (inHouse) {
-          house['planets'].add(planet);
-          assigned = true;
-          break;
-        }
-      }
-
-      if (!assigned) {
-        print(
-          '⚠️ Planet ${planet['name']} at ${degree}° not assigned to any house',
-        );
-      }
-    }
-  }
-
-  // String formatDegreeMinute(double decimalDegree) {
-  //   final deg = decimalDegree.floor();
-  //   final min = ((decimalDegree - deg) * 60).round();
-  //   return "$deg°${min.toString().padLeft(2, '0')}'";
-  // }
-
-  String formatDegreeMinute(double decimalDegree) {
-    // normalize
-    decimalDegree = decimalDegree % 360.0;
-
-    // zodiac sign
-    final signs = [
-      "Aries",
-      "Taurus",
-      "Gemini",
-      "Cancer",
-      "Leo",
-      "Virgo",
-      "Libra",
-      "Scorpio",
-      "Sagittarius",
-      "Capricorn",
-      "Aquarius",
-      "Pisces",
-    ];
-    final signIndex = (decimalDegree ~/ 30); // integer division
-    final sign = signs[signIndex];
-
-    // degree in sign
-    final degInSign = decimalDegree % 30;
-    final deg = degInSign.floor();
-    final min = ((degInSign - deg) * 60).floor();
-    final sec = ((((degInSign - deg) * 60) - min) * 60).round();
-
-    // return "$sign $deg°${min.toString().padLeft(2, '0')}'${sec.toString().padLeft(2, '0')}\"";
-    return "$deg°${min.toString().padLeft(2, '0')}'${sec.toString().padLeft(2, '0')}\"";
   }
 
   Future<void> _askOpenAIInterpretation() async {
@@ -563,7 +403,7 @@ POSITIONS PLANÉTAIRES:""";
         final name = planet['name'];
         final sign = planet['sign'];
         final degree = planet['longitude'] ?? planet['full_degree'];
-        final house = _findPlanetHouse(planet, houses);
+        final house = AstrologyUtils.findPlanetHouse(planet, houses);
         prompt += "\n- $name en $sign ${degree?.toStringAsFixed(1)}° (Maison $house)";
       }
 
@@ -671,6 +511,45 @@ Tu t'adresses à l'utilisateur de manière directe et personnelle.""";
         });
       }
     }
+  }
+
+  void _resetToPamelaDefaults() {
+    setState(() {
+      _nameController.text = 'Pamela';
+      _dateController.text = '08/05/1980';
+      _timeController.text = '04:35';
+      _latController.text = '48.53';
+      _lonController.text = '2.16';
+      _cityController.text = '';
+      _chartData = null;
+      _error = null;
+    });
+  }
+
+  void _resetToTranDefaults() {
+    setState(() {
+      _nameController.text = 'Tran';
+      _dateController.text = '23/05/1975';
+      _timeController.text = '06:56';
+      _latController.text = '35.18';
+      _lonController.text = '94.180';
+      _cityController.text = '';
+      _chartData = null;
+      _error = null;
+    });
+  }
+
+  void _clearChart() {
+    setState(() {
+      _nameController.clear();
+      _dateController.clear();
+      _timeController.clear();
+      _latController.clear();
+      _lonController.clear();
+      _cityController.clear();
+      _chartData = null;
+      _error = null;
+    });
   }
 
   @override
@@ -1130,7 +1009,7 @@ Tu t'adresses à l'utilisateur de manière directe et personnelle.""";
                   ),
                   Expanded(
                     child: SelectableText(
-                      '${planet['sign'] ?? ''} - ${planet['longitude'] != null ? formatDegreeMinute(planet['longitude']) : (planet['formatted'] ?? '')}',
+                      '${planet['sign'] ?? ''} - ${planet['longitude'] != null ? AstrologyUtils.formatDegreeMinute(planet['longitude']) : (planet['formatted'] ?? '')}',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -1162,7 +1041,7 @@ Tu t'adresses à l'utilisateur de manière directe et personnelle.""";
                   ),
                   Expanded(
                     child: SelectableText(
-                      '${entry.value['sign'] ?? ''} - ${entry.value['longitude'] != null ? formatDegreeMinute(entry.value['longitude']) : (entry.value['formatted'] ?? '')}',
+                      '${entry.value['sign'] ?? ''} - ${entry.value['longitude'] != null ? AstrologyUtils.formatDegreeMinute(entry.value['longitude']) : (entry.value['formatted'] ?? '')}',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -1185,81 +1064,4 @@ Tu t'adresses à l'utilisateur de manière directe et personnelle.""";
     _promptController.dispose(); // Add this
     super.dispose();
   }
-
-  Map<String, dynamic> deepConvertToMapStringDynamic(Map input) {
-    return input.map((key, value) {
-      if (value is Map) {
-        return MapEntry(key.toString(), deepConvertToMapStringDynamic(value));
-      } else {
-        return MapEntry(key.toString(), value);
-      }
-    });
-  }
-}
-
-Future<List<Map<String, dynamic>>> fetchCitySuggestions(String query) async {
-  if (query.isEmpty) return [];
-  final url = Uri.parse(
-    'https://nominatim.openstreetmap.org/search?city=$query&format=json&addressdetails=1&limit=10',
-  );
-  final response = await http.get(url, headers: {'User-Agent': 'YourApp/1.0'});
-  if (response.statusCode == 200) {
-    final List data = json.decode(response.body);
-    return data.map<Map<String, dynamic>>((item) {
-      return {
-        'display_name': item['display_name'] ?? '',
-        'lat': item['lat'] ?? '',
-        'lon': item['lon'] ?? '',
-      };
-    }).toList();
-  }
-  return [];
-}
-
-String _getTimezoneFromCoordinates(double latitude, double longitude) {
-  // Common timezone mappings for major regions with valid timezone names
-  
-  // Europe
-  if (latitude >= 35 && latitude <= 70 && longitude >= -10 && longitude <= 40) {
-    if (longitude >= -5 && longitude <= 25) {
-      return 'Europe/Paris'; // Western/Central Europe
-    } else if (longitude >= 25 && longitude <= 40) {
-      return 'Europe/Bucharest'; // Eastern Europe
-    }
-  }
-  
-  // North America
-  if (latitude >= 25 && latitude <= 70 && longitude >= -170 && longitude <= -50) {
-    if (longitude >= -85) return 'America/New_York'; // Eastern US
-    else if (longitude >= -105) return 'America/Chicago'; // Central US
-    else if (longitude >= -125) return 'America/Denver'; // Mountain US
-    else return 'America/Los_Angeles'; // Pacific US
-  }
-  
-  // Asia
-  if (latitude >= 0 && latitude <= 70 && longitude >= 40 && longitude <= 180) {
-    if (longitude >= 40 && longitude <= 80) return 'Europe/Moscow'; // Western Asia
-    else if (longitude >= 80 && longitude <= 120) return 'Asia/Shanghai'; // Central/Eastern Asia
-    else return 'Asia/Tokyo'; // Far East Asia
-  }
-  
-  // Default fallback to UTC for unknown regions
-  return 'UTC';
-}
-
-// Example function to get timezone from an external API
-Future<String> _getTimezoneFromAPI(double latitude, double longitude) async {
-  try {
-    final url = Uri.parse(
-      'http://api.geonames.org/timezoneJSON?lat=$latitude&lng=$longitude&username=YOUR_USERNAME'
-    );
-    final response = await http.get(url);
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return data['timezoneId'] ?? 'UTC';
-    }
-  } catch (e) {
-    print('Error getting timezone: $e');
-  }
-  return 'UTC';
 }
