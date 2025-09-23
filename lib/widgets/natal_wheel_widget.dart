@@ -199,42 +199,75 @@ class NatalWheelPainter extends CustomPainter {
       );
     }
 
-    // Draw degree ruler (every 5° a small tick, every 30° a big tick) - inner
-    for (int deg = 0; deg < 360; deg += 5) {
+    // Draw degree ruler (every 1° a tiny tick, every 5° a small tick, every 30° a big tick) - inner
+    for (int deg = 0; deg < 360; deg += 1) {
       final angle = (-pi) - ((deg - ascDegree) * pi / 180); // Rotated base
-      final isMajor = deg % 30 == 0;
+      final isMajor = deg % 30 == 0;   // Every 30° (zodiac sign boundaries)
+      final isMinor = deg % 5 == 0;    // Every 5°
+      final isTiny = deg % 1 == 0;     // Every 1°
+      
+      double tickLength;
+      Color tickColor;
+      double strokeWidth;
+      
+      if (isMajor) {
+        tickLength = 16;
+        tickColor = Colors.deepPurple;
+        strokeWidth = .5;
+      } else if (isMinor) {
+        tickLength = 10;
+        tickColor = Colors.deepPurple.withOpacity(0.7);
+        strokeWidth = 1;
+      } else if (isTiny) {
+        tickLength = 4;
+        tickColor = Colors.grey.withOpacity(0.6);
+        strokeWidth = 0.5;
+      } else {
+        continue; // Skip if none of the conditions match
+      }
+      
       final tickStart = center + Offset(
         (zodiacRadiusInner - 2) * cos(angle),
         (zodiacRadiusInner - 2) * sin(angle),
       );
       final tickEnd = center + Offset(
-        (zodiacRadiusInner - (isMajor ? 16 : 8)) * cos(angle),
-        (zodiacRadiusInner - (isMajor ? 16 : 8)) * sin(angle),
+        (zodiacRadiusInner - 2 - tickLength) * cos(angle),
+        (zodiacRadiusInner - 2 - tickLength) * sin(angle),
       );
       canvas.drawLine(
         tickStart,
         tickEnd,
         Paint()
-          ..color = isMajor ? Colors.deepPurple : Colors.grey
-          ..strokeWidth = isMajor ? 1 : 1,
+          ..color = tickColor
+          ..strokeWidth = strokeWidth,
       );
     }
 
-    // Draw degree labels (inner)
-    for (int i = 0; i < 12; i++) {
-      final deg = i * 30;
-      final angle = (-pi) - ((deg - ascDegree) * pi / 180); // Rotated base
-      final tx = center.dx + (zodiacRadiusInner - 22) * cos(angle);
-      final ty = center.dy + (zodiacRadiusInner - 22) * sin(angle);
-      final textPainter = TextPainter(
-        text: TextSpan(
-          text: '$deg°',
-          style: const TextStyle(fontSize: 10, color: Colors.deepPurple),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      textPainter.paint(canvas, Offset(tx - 10, ty - 8));
-    }
+    // Draw degree labels (every 10° for better readability)
+    // for (int deg = 0; deg < 360; deg += 10) {
+    //   final angle = (-pi) - ((deg - ascDegree) * pi / 180); // Rotated base
+    //   final tx = center.dx + (zodiacRadiusInner - 26) * cos(angle);
+    //   final ty = center.dy + (zodiacRadiusInner - 26) * sin(angle);
+      
+    //   // Use different styling for major (30°) vs minor (10°) labels
+    //   final isMajor = deg % 30 == 0;
+    //   final fontSize = isMajor ? 11.0 : 8.0;
+    //   final fontWeight = isMajor ? FontWeight.bold : FontWeight.normal;
+    //   final color = isMajor ? Colors.deepPurple : Colors.deepPurple.withOpacity(0.7);
+      
+      // final textPainter = TextPainter(
+      //   text: TextSpan(
+      //     text: '$deg°',
+      //     style: TextStyle(
+      //       fontSize: fontSize, 
+      //       color: color,
+      //       fontWeight: fontWeight,
+      //     ),
+      //   ),
+      //   textDirection: TextDirection.ltr,
+      // )..layout();
+      // textPainter.paint(canvas, Offset(tx - textPainter.width / 2, ty - textPainter.height / 2));
+    // }
 
     // Draw house cusps (lines) - constrained to smaller inner circle
     if (chartData['houses'] is List) {
@@ -390,6 +423,39 @@ class NatalWheelPainter extends CustomPainter {
         degreePainter.paint(
           canvas,
           Offset(textOffsetX, textOffsetY),
+        );
+      }
+    }
+    
+    // Draw radial degree lines (normals) from planets to degree ruler
+    if (chartData['planets'] is List) {
+      final planets = chartData['planets'] as List;
+      final planetRadius = radius + 40;
+      final degreeRulerRadius = zodiacRadiusInner - 2; // Connect to the degree ruler
+
+      for (final planet in planets) {
+        final deg = (planet['longitude'] ?? planet['full_degree'] ?? 0).toDouble();
+        final angle = (-pi) - (deg - ascDegree) * pi / 180; // Rotated base
+        
+        // Planet position (start of line)
+        final planetStart = center + Offset(
+          planetRadius * cos(angle),
+          planetRadius * sin(angle),
+        );
+        
+        // Degree ruler position (end of line)
+        final rulerEnd = center + Offset(
+          degreeRulerRadius * cos(angle),
+          degreeRulerRadius * sin(angle),
+        );
+
+        // Draw the radial line from planet to degree ruler
+        canvas.drawLine(
+          planetStart,
+          rulerEnd,
+          Paint()
+            ..color = Colors.grey.withOpacity(0.4)
+            ..strokeWidth = 1,
         );
       }
     }
