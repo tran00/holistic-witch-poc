@@ -294,6 +294,72 @@ class NatalWheelPainter extends CustomPainter {
             ..strokeWidth = 1,
         );
 
+        // Draw triangle at house cusp (bigger for angular houses)
+        final houseNumber = house['house_id'] ?? (i + 1);
+        final isAngularHouse = [1, 4, 7, 10].contains(houseNumber); // AC, IC, DC, MC
+        
+        final triangleRadius = isAngularHouse ? houseLineOuter : houseLineOuter - 25; // Position triangle slightly beyond the cusp line
+        final triangleSize = isAngularHouse ? 14.0 : 4.0; // Bigger triangles for angular houses
+        final triangleCenter = center + Offset(triangleRadius * cos(angle), triangleRadius * sin(angle));
+        
+        // Create triangle (inward for angular houses, outward for regular houses)
+        final trianglePath = Path();
+        
+        if (isAngularHouse) {
+          // Angular houses: Triangle tip points INWARD toward center
+          final tipOffset = triangleCenter - Offset(triangleSize * cos(angle), triangleSize * sin(angle));
+          // Triangle base points (perpendicular to radius)
+          final baseLeft = triangleCenter + Offset(
+            triangleSize * 0.6 * cos(angle + pi / 2), 
+            triangleSize * 0.6 * sin(angle + pi / 2)
+          );
+          final baseRight = triangleCenter + Offset(
+            triangleSize * 0.6 * cos(angle - pi / 2), 
+            triangleSize * 0.6 * sin(angle - pi / 2)
+          );
+          
+          trianglePath.moveTo(tipOffset.dx, tipOffset.dy);
+          trianglePath.lineTo(baseLeft.dx, baseLeft.dy);
+          trianglePath.lineTo(baseRight.dx, baseRight.dy);
+        } else {
+          // Regular houses: Triangle tip points OUTWARD from center
+          final tipOffset = triangleCenter + Offset(triangleSize * cos(angle), triangleSize * sin(angle));
+          // Triangle base points (perpendicular to radius)
+          final baseLeft = triangleCenter + Offset(
+            triangleSize * 0.6 * cos(angle + pi / 2), 
+            triangleSize * 0.6 * sin(angle + pi / 2)
+          );
+          final baseRight = triangleCenter + Offset(
+            triangleSize * 0.6 * cos(angle - pi / 2), 
+            triangleSize * 0.6 * sin(angle - pi / 2)
+          );
+          
+          trianglePath.moveTo(tipOffset.dx, tipOffset.dy);
+          trianglePath.lineTo(baseLeft.dx, baseLeft.dy);
+          trianglePath.lineTo(baseRight.dx, baseRight.dy);
+        }
+        trianglePath.close();
+        
+        // Use different colors for angular houses
+        final triangleColor = isAngularHouse ? Colors.red : Colors.deepPurple;
+        final strokeWidth = isAngularHouse ? 1.0 : 0.5;
+        
+        canvas.drawPath(
+          trianglePath,
+          Paint()
+            ..color = triangleColor
+            ..style = PaintingStyle.fill,
+        );
+
+        // Draw triangle border
+        canvas.drawPath(
+          trianglePath,
+          Paint()
+            ..color = triangleColor
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = strokeWidth,
+        );
+
         // Draw house number at the middle of the house
         final endDeg = (houses[i]['end_degree'] as num).toDouble();
         double midDeg;
