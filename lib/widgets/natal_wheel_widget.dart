@@ -96,7 +96,7 @@ class NatalWheelPainter extends CustomPainter {
     
     // If no nodes at all, add them at example positions
     if (!hasNorthNode && !hasSouthNode) {
-      print('🔮 Adding missing North and South Nodes');
+      // print('🔮 Adding missing North and South Nodes');
       
       // Add North Node at 120° (example position)
       planets.add({
@@ -124,7 +124,7 @@ class NatalWheelPainter extends CustomPainter {
       final northDegree = (northNode['longitude'] ?? 0).toDouble();
       final southDegree = (northDegree + 180) % 360;
       
-      print('🔮 Adding South Node at ${southDegree}° (opposite of North Node at ${northDegree}°)');
+      // print('🔮 Adding South Node at ${southDegree}° (opposite of North Node at ${northDegree}°)');
       
       planets.add({
         'name': 'South Node',
@@ -139,7 +139,7 @@ class NatalWheelPainter extends CustomPainter {
     );
     
     if (!hasChiron) {
-      print('🔮 Adding missing Chiron');
+      // print('🔮 Adding missing Chiron');
       planets.add({
         'name': 'Chiron',
         'short_name': 'Ch',
@@ -156,10 +156,10 @@ class NatalWheelPainter extends CustomPainter {
     // Debug: Print all planets after adding nodes
     if (chartData['planets'] is List) {
       final planets = chartData['planets'] as List;
-      print('🌟 Final planets list:');
-      for (final planet in planets) {
-        print('  - ${planet['name']} at ${planet['longitude']}°');
-      }
+      // print('🌟 Final planets list:');
+      // for (final planet in planets) {
+      //   print('  - ${planet['name']} at ${planet['longitude']}°');
+      // }
     }
     
     final center = Offset(size.width / 2, size.height / 2);
@@ -319,10 +319,10 @@ class NatalWheelPainter extends CustomPainter {
             shortName.toLowerCase().contains('n')) {
           glyphColor = Colors.indigo;
           fontSize = 30;
-          print('🔵 Drawing node: $planetName with glyph: $glyph');
+          // print('🔵 Drawing node: $planetName with glyph: $glyph');
         } else if (planetName.toLowerCase() == 'chiron' || shortName.toLowerCase() == 'ch') {
           glyphColor = Colors.teal;
-          print('🟢 Drawing Chiron: $planetName with glyph: $glyph');
+          // print('🟢 Drawing Chiron: $planetName with glyph: $glyph');
         }
 
         // Draw planet glyph with special styling

@@ -112,6 +112,31 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
       _error = null;
     });
 
+    // ==============================================
+    /* 
+  
+      // TODO try to refactor code with astrology_calculation_service.dart
+
+      try {
+        await AstrologyCalculationService.calculateChart(
+          name: _natalNameController.text,
+          date: _natalDateController.text,
+          time: _natalTimeController.text,
+          lat: _natalLatitudeController.text,
+          long: _natalLongitudeController.text,
+          location: _natalLocationController.text,
+        );
+      } catch (e) {
+        print('❌ Error calculating chart: $e');
+        setState(() {
+          _error = 'Error calculating chart: $e';
+          _isLoading = false;
+        });
+        return;
+      }
+      */
+    // ==============================================
+
     try {
       // Parse date and time
       final dateParts = _dateController.text.split('/');
@@ -137,12 +162,24 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
       final localHour = int.parse(timeParts[0]);
       final localMinute = int.parse(timeParts[1]);
 
+
+      print(  '---------------------------------');
+      print('📍 Birth date and time');
+      print('Date: $localDay/$localMonth/$localYear');
+      print('Time: $localHour:$localMinute');
+
       // Declare UTC variables outside try block
       int utcYear = localYear;
       int utcMonth = localMonth;
       int utcDay = localDay;
       int utcHour = localHour;
       int utcMinute = localMinute;
+
+      print(  '---------------------------------');
+      print('📍 UTC variables');
+      print('Date: $utcDay/$utcMonth/$utcYear');
+      print('Time: $utcHour:$utcMinute');
+      print('---------------------------------');
 
       // Get timezone for birth location
       String timezoneName;
@@ -181,6 +218,16 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
         // Fallback: treat input time as UTC (already set above)
       }
 
+      print('---------------------------------');
+      print('📅 julianDay');
+      print(utcYear);
+      print(utcMonth);
+      print(utcDay);
+      print(utcHour);
+      print(utcMinute);
+      print(utcHour + utcMinute / 60.0);
+      print('---------------------------------');
+
       // Calculate Julian Day using UTC
       final julianDay = Sweph.swe_julday(
         utcYear,
@@ -205,6 +252,8 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
         'houses': {},
       };
 
+      print('🔍 chartData data: ${chartData}');
+
       // Calculate planetary positions
       await _calculatePlanets(julianDay, chartData);
 
@@ -219,6 +268,15 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
 
       print('🔍 Planets data: ${chartData['planets']}');
       print('🔍 Houses data: ${chartData['houses']}');
+
+      // print('🔍 Planets data: ');
+      // for (final planet in chartData['planets'].values) {
+      //   print('  - ${planet['name']} at ${planet['longitude']}°');
+      // }
+      // print('🔍 Houses data: ');
+      // for (final house in chartData['houses'].values) {
+      //   print('  - House ${house['number']} starts at ${house['start_degree']}°');
+      // }
 
       setState(() {
         _chartData = chartData;
@@ -268,6 +326,7 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
           'degree': degree,
           'formatted': '${sign} ${degree.toStringAsFixed(2)}°',
         };
+
       } catch (e) {
         print('❌ Error calculating ${entry.key}: $e');
         chartData['planets'][entry.key] = {

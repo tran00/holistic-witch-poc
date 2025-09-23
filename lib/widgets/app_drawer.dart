@@ -71,19 +71,26 @@ class AppDrawer extends StatelessWidget {
             },
           ),
           ListTile(
+            leading: const Icon(Icons.compare),
+            title: const Text('Daily Chart Comparison'),
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/daily-chart');
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.list),
             title: const Text('Numerologie'),
             onTap: () {
               Navigator.pushReplacementNamed(context, '/numerologie');
             },
           ),
-          ListTile(
-            leading: const Icon(Icons.star),
-            title: const Text('Thème natal'),
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/natal');
-            },
-          ),
+          // ListTile(
+          //   leading: const Icon(Icons.star),
+          //   title: const Text('Thème natal'),
+          //   onTap: () {
+          //     Navigator.pushReplacementNamed(context, '/natal');
+          //   },
+          // ),
         ],
       ),
     );

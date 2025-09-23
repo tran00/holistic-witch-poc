@@ -42,6 +42,7 @@ dependencies:
   url_launcher: ^6.2.5
   sweph: ^2.10.3
   timezone: ^0.9.0
+  intl: ^0.18.1 # Add this for date formatting
 
 dev_dependencies:
   flutter_test:

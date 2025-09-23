@@ -13,6 +13,7 @@ import 'six_card_draw_page.dart';
 import 'widgets/app_drawer.dart';
 import 'natal_chart_page.dart';
 import 'natal_chart_page_with_sweph.dart';
+import 'daily_chart_page.dart'; // Add this import
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,6 +61,7 @@ class MyApp extends StatelessWidget {
         '/numerologie': (context) => const NumerologiePage(),
         '/natal': (context) => const NatalChartPage(),
         '/natal-sweph': (context) => const NatalChartPageWithSweph(),
+        '/daily-chart': (context) => const DailyChartPage(), // Add this route
       },
     );
   }
@@ -114,6 +116,14 @@ class HomePage extends StatelessWidget {
               onPressed: () {
                 Navigator.pushNamed(context, '/natal-sweph');
               },
+            ), 
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.star),
+              label: const Text('Daily Chart Comparison'),
+              onPressed: () {
+                Navigator.pushNamed(context, '/daily-chart');
+              },
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
@@ -123,14 +133,14 @@ class HomePage extends StatelessWidget {
                 Navigator.pushNamed(context, '/numerologie');
               },
             ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.star),
-              label: const Text('Carte du ciel (natal)'),
-              onPressed: () {
-                Navigator.pushNamed(context, '/natal');
-              },
-            ),
+            // const SizedBox(height: 16),
+            // ElevatedButton.icon(
+            //   icon: const Icon(Icons.star),
+            //   label: const Text('Carte du ciel (natal)'),
+            //   onPressed: () {
+            //     Navigator.pushNamed(context, '/natal');
+            //   },
+            // ),
           ],
         ),
       ),
