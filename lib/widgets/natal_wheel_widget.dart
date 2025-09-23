@@ -48,6 +48,20 @@ const planetGlyphs = {
   'MEAN_NODE': '☊',
 };
 
+// Planetary rulerships - traditional and modern
+const planetRulerships = {
+  'Sun': [4],        // Leo (5th sign, index 4)
+  'Moon': [3],       // Cancer (4th sign, index 3)
+  'Mercury': [2, 5], // Gemini (3rd sign, index 2) and Virgo (6th sign, index 5)
+  'Venus': [1, 6],   // Taurus (2nd sign, index 1) and Libra (7th sign, index 6)
+  'Mars': [0, 7],    // Aries (1st sign, index 0) and Scorpio (8th sign, index 7) - traditional
+  'Jupiter': [8, 11], // Sagittarius (9th sign, index 8) and Pisces (12th sign, index 11) - traditional
+  'Saturn': [9, 10], // Capricorn (10th sign, index 9) and Aquarius (11th sign, index 10) - traditional
+  'Uranus': [10],    // Aquarius (11th sign, index 10) - modern
+  'Neptune': [11],   // Pisces (12th sign, index 11) - modern
+  'Pluto': [7],      // Scorpio (8th sign, index 7) - modern
+};
+
 const debugDrawLineToPlanet = false;
 
 class NatalWheel extends StatelessWidget {
@@ -554,11 +568,52 @@ class NatalWheelPainter extends CustomPainter {
       }
     }
 
+    // Draw planetary rulership lines (from planets to their ruling signs)
+    if (chartData['planets'] is List) {
+      final planets = chartData['planets'] as List;
+      final planetRadius = radius + 40; // Same radius as planet positions
+      final zodiacRadius = radius - 40; // Same radius as zodiac glyphs
+
+      for (final planet in planets) {
+        final planetName = planet['name'] ?? '';
+        final planetDeg = (planet['longitude'] ?? planet['full_degree'] ?? 0).toDouble();
+        
+        // Get the ruling signs for this planet
+        final rulingSignIndices = planetRulerships[planetName];
+        if (rulingSignIndices != null) {
+          // Calculate planet position
+          final planetAngle = (-pi) - (planetDeg - ascDegree) * pi / 180;
+          final planetX = center.dx + planetRadius * cos(planetAngle);
+          final planetY = center.dy + planetRadius * sin(planetAngle);
+          
+          // Draw lines to each ruling sign
+          for (final signIndex in rulingSignIndices) {
+            // Calculate the middle of the ruling sign
+            final signMiddleDegree = signIndex * 30 + 15;
+            final signAngle = (-pi) - ((signMiddleDegree - ascDegree) * pi / 180);
+            final signX = center.dx + zodiacRadius * cos(signAngle);
+            final signY = center.dy + zodiacRadius * sin(signAngle);
+            
+            // Draw a subtle line from planet to its ruling sign
+            canvas.drawLine(
+              Offset(planetX, planetY),
+              Offset(signX, signY),
+              Paint()
+                ..color = Colors.deepPurple.withOpacity(0.3)
+                ..strokeWidth = 1
+                ..style = PaintingStyle.stroke,
+            );
+          }
+        }
+      }
+    }
+
     // Draw zodiac glyphs between aspects circle and zodiac outer circle
     for (int i = 0; i < 12; i++) {
-      final startAngle = (-pi) - ((i * 30 - ascDegree) * pi / 180); // Rotated base
-      final sweepAngle = 30 * pi / 180;
-      final midAngle = startAngle + sweepAngle / 2;
+      // Calculate the middle of each zodiac sign (15° from the start of each sign)
+      final signMiddleDegree = i * 30 + 15; // Middle of each 30° zodiac sign
+      final midAngle = (-pi) - ((signMiddleDegree - ascDegree) * pi / 180); // Rotated base
+      
       // Position between aspects circle and zodiac outer circle (e.g., at radius - 40)
       final glyphRadius = radius - 40;
       final zx = center.dx + glyphRadius * cos(midAngle);
