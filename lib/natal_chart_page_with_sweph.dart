@@ -1,15 +1,13 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:sweph/sweph.dart';
 import 'widgets/app_drawer.dart';
 import 'widgets/natal_wheel_widget.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
-import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'openai_client.dart'; 
 import 'services/geocoding_service.dart';
+import 'services/astrology_calculation_service.dart';
 import 'utils/astrology_utils.dart';
 
 class NatalChartPageWithSweph extends StatefulWidget {
@@ -112,171 +110,17 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
       _error = null;
     });
 
-    // ==============================================
-    /* 
-  
-      // TODO try to refactor code with astrology_calculation_service.dart
-
-      try {
-        await AstrologyCalculationService.calculateChart(
-          name: _natalNameController.text,
-          date: _natalDateController.text,
-          time: _natalTimeController.text,
-          lat: _natalLatitudeController.text,
-          long: _natalLongitudeController.text,
-          location: _natalLocationController.text,
-        );
-      } catch (e) {
-        print('❌ Error calculating chart: $e');
-        setState(() {
-          _error = 'Error calculating chart: $e';
-          _isLoading = false;
-        });
-        return;
-      }
-      */
-    // ==============================================
-
     try {
-      // Parse date and time
-      final dateParts = _dateController.text.split('/');
-      final timeParts = _timeController.text.split(':');
-
-      if (dateParts.length != 3 || timeParts.length != 2) {
-        throw Exception('Invalid date or time format');
-      }
-
-      final day = int.parse(dateParts[0]);
-      final month = int.parse(dateParts[1]);
-      final year = int.parse(dateParts[2]);
-      final hour = int.parse(timeParts[0]);
-      final minute = int.parse(timeParts[1]);
-
-      final latitude = double.parse(_latController.text);
-      final longitude = double.parse(_lonController.text);
-
-      // Parse local date and time
-      final localDay = int.parse(dateParts[0]);
-      final localMonth = int.parse(dateParts[1]);
-      final localYear = int.parse(dateParts[2]);
-      final localHour = int.parse(timeParts[0]);
-      final localMinute = int.parse(timeParts[1]);
-
-
-      print(  '---------------------------------');
-      print('📍 Birth date and time');
-      print('Date: $localDay/$localMonth/$localYear');
-      print('Time: $localHour:$localMinute');
-
-      // Declare UTC variables outside try block
-      int utcYear = localYear;
-      int utcMonth = localMonth;
-      int utcDay = localDay;
-      int utcHour = localHour;
-      int utcMinute = localMinute;
-
-      print(  '---------------------------------');
-      print('📍 UTC variables');
-      print('Date: $utcDay/$utcMonth/$utcYear');
-      print('Time: $utcHour:$utcMinute');
-      print('---------------------------------');
-
-      // Get timezone for birth location
-      String timezoneName;
-      try {
-        timezoneName = GeocodingService().getTimezoneFromCoordinates(latitude, longitude);
-        final location = tz.getLocation(timezoneName);
-        
-        // Create local date/time at birth location
-        final localDateTime = tz.TZDateTime(
-          location,
-          localYear,
-          localMonth,
-          localDay,
-          localHour,
-          localMinute,
-        );
-
-        // Convert to UTC
-        final utcDateTime = localDateTime.toUtc();
-        
-        print('📍 Birth location timezone: $timezoneName');
-        print('🕐 Local time: $localDateTime');
-        print('🌍 UTC time: $utcDateTime');
-        
-        // Update UTC values
-        utcYear = utcDateTime.year;
-        utcMonth = utcDateTime.month;
-        utcDay = utcDateTime.day;
-        utcHour = utcDateTime.hour;
-        utcMinute = utcDateTime.minute;
-        
-      } catch (e) {
-        print('⚠️ Timezone error: $e, using local time as UTC');
-        timezoneName = 'UTC';
-        
-        // Fallback: treat input time as UTC (already set above)
-      }
-
-      print('---------------------------------');
-      print('📅 julianDay');
-      print(utcYear);
-      print(utcMonth);
-      print(utcDay);
-      print(utcHour);
-      print(utcMinute);
-      print(utcHour + utcMinute / 60.0);
-      print('---------------------------------');
-
-      // Calculate Julian Day using UTC
-      final julianDay = Sweph.swe_julday(
-        utcYear,
-        utcMonth,
-        utcDay,
-        utcHour + utcMinute / 60.0,
-        CalendarType.SE_GREG_CAL,
+      final chartData = await AstrologyCalculationService.calculateChart(
+        name: _nameController.text,
+        date: _dateController.text,
+        time: _timeController.text,
+        lat: _latController.text,
+        long: _lonController.text,
+        location: _cityController.text.isNotEmpty 
+            ? _cityController.text 
+            : 'Lat: ${_latController.text}, Lon: ${_lonController.text}',
       );
-
-      // Calculate planetary positions
-      Map<String, dynamic> chartData = {
-        'name': _nameController.text.isNotEmpty
-            ? _nameController.text
-            : 'Natal Chart',
-        'date':
-            '${day.toString().padLeft(2, '0')}/${month.toString().padLeft(2, '0')}/$year',
-        'time':
-            '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}',
-        'location': 'Lat: $latitude, Lon: $longitude',
-        'julianDay': julianDay,
-        'planets': {},
-        'houses': {},
-      };
-
-      print('🔍 chartData data: ${chartData}');
-
-      // Calculate planetary positions
-      await _calculatePlanets(julianDay, chartData);
-
-      // Calculate houses (using Placidus system)
-      await _calculateHouses(julianDay, latitude, longitude, chartData);
-
-      // First: Group planets into houses (while houses is still a Map)
-      AstrologyUtils.groupPlanetsIntoHouses(chartData);
-
-      // Second: Convert to wheel format (converts Map to List)
-      AstrologyUtils.convertChartDataToWheelFormat(chartData);
-
-      print('🔍 Planets data: ${chartData['planets']}');
-      print('🔍 Houses data: ${chartData['houses']}');
-
-      // print('🔍 Planets data: ');
-      // for (final planet in chartData['planets'].values) {
-      //   print('  - ${planet['name']} at ${planet['longitude']}°');
-      // }
-      // print('🔍 Houses data: ');
-      // for (final house in chartData['houses'].values) {
-      //   print('  - House ${house['number']} starts at ${house['start_degree']}°');
-      // }
 
       setState(() {
         _chartData = chartData;
@@ -288,149 +132,6 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
         _error = 'Error calculating chart: $e';
         _isLoading = false;
       });
-    }
-  }
-
-  Future<void> _calculatePlanets(
-    double julianDay,
-    Map<String, dynamic> chartData,
-  ) async {
-    // Use proper HeavenlyBody enum values
-    final planets = {
-      'Sun': HeavenlyBody.SE_SUN,
-      'Moon': HeavenlyBody.SE_MOON,
-      'Mercury': HeavenlyBody.SE_MERCURY,
-      'Venus': HeavenlyBody.SE_VENUS,
-      'Mars': HeavenlyBody.SE_MARS,
-      'Jupiter': HeavenlyBody.SE_JUPITER,
-      'Saturn': HeavenlyBody.SE_SATURN,
-      'Uranus': HeavenlyBody.SE_URANUS,
-      'Neptune': HeavenlyBody.SE_NEPTUNE,
-      'Pluto': HeavenlyBody.SE_PLUTO,
-    };
-
-    for (final entry in planets.entries) {
-      try {
-        final result = Sweph.swe_calc_ut(
-          julianDay,
-          entry.value,
-          SwephFlag.SEFLG_SPEED,
-        );
-        final longitude = result.longitude;
-        final sign = AstrologyUtils.getZodiacSign(longitude);
-        final degree = longitude % 30;
-        chartData['planets'][entry.key] = {
-          'name': entry.key, // <-- This is correct!
-          'longitude': longitude,
-          'sign': sign,
-          'degree': degree,
-          'formatted': '${sign} ${degree.toStringAsFixed(2)}°',
-        };
-
-      } catch (e) {
-        print('❌ Error calculating ${entry.key}: $e');
-        chartData['planets'][entry.key] = {
-          'name': entry.key, // <-- This is correct!
-          'formatted': 'Error: $e',
-        };
-      }
-    }
-  }
-
-  Future<void> _calculateHouses(
-    double julianDay,
-    double latitude,
-    double longitude,
-    Map<String, dynamic> chartData,
-  ) async {
-    try {
-      HouseCuspData? result;
-
-      try {
-        result = Sweph.swe_houses(
-          julianDay,
-          latitude,
-          longitude,
-          Hsys.P,
-        ); // Placidus
-      } catch (e1) {
-        try {
-          result = Sweph.swe_houses(
-            julianDay,
-            latitude,
-            longitude,
-            Hsys.K,
-          ); // Koch
-        } catch (e2) {
-          try {
-            result = Sweph.swe_houses(
-              julianDay,
-              latitude,
-              longitude,
-              Hsys.E,
-            ); // Equal
-          } catch (e3) {
-            print('❌ All house systems failed: $e1, $e2, $e3');
-            return;
-          }
-        }
-      }
-
-      if (result != null) {
-        final houseCusps = result.cusps;
-
-        // Debug: Print raw house cusps
-        print('🏠 Raw house cusps from SwEph:');
-        for (int i = 0; i < houseCusps.length && i < 12; i++) {
-          print('House ${i + 1}: ${houseCusps[i].toStringAsFixed(2)}°');
-        }
-
-        // Only take the first 12 house cusps starting from index 1 (ignore any extra)
-        final validCusps = houseCusps.skip(1).take(12).toList();
-
-        // Debug: Print raw house cusps (adjusted for new indexing)
-        print('🏠 Raw house cusps from SwEph (shifted):');
-        for (int i = 0; i < validCusps.length; i++) {
-          print('House ${i + 1}: ${validCusps[i].toStringAsFixed(2)}°');
-        }
-
-        // Store the Ascendant for reference
-        final ascendant = validCusps[0]; // First house cusp = Ascendant
-        chartData['ascendant'] = ascendant;
-
-        print('🏠 Ascendant: ${ascendant.toStringAsFixed(2)}°');
-
-        // Store other angles
-        chartData['descendant'] = validCusps[6]; // House 7 cusp
-        chartData['mc'] = validCusps[9]; // House 10 cusp
-        chartData['imum_coeli'] = validCusps[3]; // House 4 cusp
-
-        for (int i = 0; i < validCusps.length; i++) {
-          final houseLon = validCusps[i];
-          final nextHouseLon = validCusps[(i + 1) % validCusps.length];
-          final sign = AstrologyUtils.getZodiacSign(houseLon);
-
-          chartData['houses']['House ${i + 1}'] = {
-            'longitude': houseLon,
-            'sign': sign,
-            'degree': houseLon % 30,
-            'formatted': '${sign} ${(houseLon % 30).toStringAsFixed(2)}°',
-            'start_degree': houseLon,
-            'end_degree': nextHouseLon,
-            'house_id': i + 1,
-            'planets': [],
-          };
-
-          print(
-            'House ${i + 1}: start=${houseLon.toStringAsFixed(2)}°, end=${nextHouseLon.toStringAsFixed(2)}°, sign=${sign}',
-          );
-        }
-      } else {
-        print('❌ No house data returned from SwEph');
-      }
-    } catch (e) {
-      print('❌ Error calculating houses: $e');
-      // No dummy houses - leave houses empty
     }
   }
 
@@ -516,28 +217,6 @@ Tu t'adresses à l'utilisateur de manière directe et personnelle.""";
         });
       }
     }
-  }
-
-  // Helper function to find which house a planet is in
-  int _findPlanetHouse(Map<String, dynamic> planet, List houses) {
-    final planetDegree = (planet['longitude'] ?? planet['full_degree'] ?? 0).toDouble();
-    
-    for (int i = 0; i < houses.length; i++) {
-      final houseStart = (houses[i]['start_degree'] as num).toDouble();
-      final houseEnd = (houses[i]['end_degree'] as num).toDouble();
-      
-      if (houseEnd > houseStart) {
-        if (planetDegree >= houseStart && planetDegree < houseEnd) {
-          return i + 1;
-        }
-      } else {
-        // Handle houses that cross 0°
-        if (planetDegree >= houseStart || planetDegree < houseEnd) {
-          return i + 1;
-        }
-      }
-    }
-    return 1; // Default to house 1 if not found
   }
 
   Future<void> _sendCustomPrompt() async {
