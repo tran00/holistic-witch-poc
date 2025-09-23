@@ -1,182 +1,48 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'services/tarot_service.dart';
-import 'services/prompt_service.dart';
-import 'services/openai_tarot_service.dart';
+import 'three_card_rag_helper.dart';
 import 'mixins/tarot_page_mixin.dart';
-import 'widgets/deck_selector.dart';
 import 'widgets/app_drawer.dart';
+import 'rag_service_singleton.dart';
+import 'services/prompt_service.dart';
 // import 'widgets/reveal_tarot_card.dart'; // Add this if missing
 
-class ThreeCardDrawPage extends StatefulWidget {
-  const ThreeCardDrawPage({super.key});
+// ...existing code...
+  class ThreeCardDrawPage extends StatefulWidget {
+    const ThreeCardDrawPage({super.key});
 
-  @override
-  State<ThreeCardDrawPage> createState() => _ThreeCardDrawPageState();
-}
-
-class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> with TarotPageMixin {
-  String? customOpenAIAnswer;
-  String? customPrompt;
-  bool isCustomLoading = false;
-  
-  // ADD THESE BONUS SELECTION VARIABLES
-  bool showingBonusSelection = false;
-  List<bool> bonusSelectedCards = <bool>[];
-  List<int> bonusSelectedIndices = <int>[];
-  
-  // ADD THESE IF MISSING
-  List<String>? bonusCards;
-  String? bonusOpenAIAnswer;
-  bool isBonusLoading = false;
-  
-  @override
-  void initializeServices() {
-    print('🚀 initializeServices called');
-    super.initializeServices(); // This will handle OpenAI service creation
-    
-    // REMOVE OR COMMENT OUT THIS LINE:
-    // openAI = OpenAIClient(apiKey);
-    
-    // The super.initializeServices() call above already creates the OpenAI service
+    @override
+    State<ThreeCardDrawPage> createState() => _ThreeCardDrawPageState();
   }
 
-  // ADD THIS METHOD TO OVERRIDE THE MIXIN VERSION
-  @override
-  void showDeck() {
-    print('showDeck called');
-    
-    // Wait for TarotService to be loaded
-    if (TarotService.tarotDeck.isEmpty) {
-      print('TarotService.tarotDeck is empty, waiting...');
-      return;
-    }
-    
-    print('TarotService.tarotDeck.length: ${TarotService.tarotDeck.length}');
-    
-    setState(() {
-      selectedCards = List.filled(TarotService.tarotDeck.length, false);
-      selectedIndices = <int>[];
-      drawnCards = null;
-      showingDeck = true;
-      revealedCards = 0;
-      
-      // Automatically shuffle the deck order every time
-      shuffledDeckOrder = List.generate(TarotService.tarotDeck.length, (index) => index);
-      shuffledDeckOrder.shuffle();
-      
-      // Clear all responses
-      openAIAnswer = null;
-      prompt = null;
-      customOpenAIAnswer = null;
-      customPrompt = null;
-      bonusCards = null;
-      bonusPrompt = null;
-      bonusOpenAIAnswer = null;
-      isLoading = false;
-      isCustomLoading = false;
-      isBonusLoading = false;
-    });
-    
-    print('showDeck complete - selectedCards.length: ${selectedCards.length}, deck shuffled');
-  }
-
-  void drawCards() {
-    debugState(); // Add this line
-    setState(() {
-      drawnCards = TarotService.drawCards(3);
-      showingDeck = false;
-      revealedCards = 0;
-    });
-    revealCardsOneByOne(3);
-  }
-
-  Future<void> askCustomOpenAI() async {
+  class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> with TarotPageMixin {
+  // --- OpenAI custom button logic ---
+  Future<void> askOpenAICustom() async {
     if (drawnCards == null || drawnCards!.length != 3) return;
     if (!mounted) return;
-    
     final question = questionController.text.trim();
     if (question.isEmpty) return;
-    
-    final builtPrompt = PromptService.buildThreeCardCustomPrompt(question, drawnCards!);
-    
-    setState(() {
-      isCustomLoading = true;
-      customPrompt = builtPrompt;
-      customOpenAIAnswer = null;
-    });
-    
-    try {
-      final answer = await openAI.sendMessage(builtPrompt);
-      if (mounted) {
-        setState(() {
-          customOpenAIAnswer = answer;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          customOpenAIAnswer = 'Erreur : $e';
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          isCustomLoading = false;
-        });
-      }
-    }
-  }
-
-  @override
-  Future<void> askOpenAI() async {
-    print('🎯 askOpenAI called');
-    
-    if (drawnCards == null) {
-      print('❌ No drawn cards');
-      return;
-    }
-    
-    final question = questionController.text.trim();
-    if (question.isEmpty) {
-      print('❌ Question is empty');
-      return;
-    }
-    
-    final builtPrompt = PromptService.buildStandardPrompt(
-      question, 
-      drawnCards!, 
-      "Explique le sens de chaque carte dans le contexte de la question et donne une synthèse."
-    );
-    
     setState(() {
       isLoading = true;
-      prompt = builtPrompt;
-      openAIAnswer = null;
-      // Make sure bonus state is reset
-      bonusCards = null;
-      bonusOpenAIAnswer = null;
-      isBonusLoading = false;
+      ragAnswer = null;
+      ragContext = null;
+      lastSystemPrompt = null;
     });
-    
     try {
-      final answer = await openAI.getTarotReading(builtPrompt);
-      print('📥 OpenAI response received: ${answer.length} characters');
-      
+      final prompt = PromptService.buildThreeCardCustomPrompt(question, drawnCards!);
+      // Direct OpenAI chat completion, no RAG, no Pinecone
+      final answer = await _askOpenAIWithPromptOnly(question, prompt);
       if (mounted) {
         setState(() {
-          openAIAnswer = answer;
+          ragAnswer = answer;
+          ragContext = null;
+          lastSystemPrompt = prompt;
         });
-        print('✅ openAIAnswer set to: ${openAIAnswer?.substring(0, 50)}...');
-        print('✅ bonusCards: $bonusCards');
-        print('✅ isBonusLoading: $isBonusLoading');
-        print('✅ Bonus button should be visible now');
       }
     } catch (e) {
-      print('💥 Error in askOpenAI: $e');
       if (mounted) {
         setState(() {
-          openAIAnswer = 'Erreur : $e';
+          ragAnswer = 'Erreur : $e';
         });
       }
     } finally {
@@ -188,913 +54,443 @@ class _ThreeCardDrawPageState extends State<ThreeCardDrawPage> with TarotPageMix
     }
   }
 
-  @override
-  Future<void> revealCardsOneByOne(int totalCards) async {
-    if (drawnCards == null) return;
-    
-    for (int i = 0; i < totalCards; i++) {
-      await Future.delayed(const Duration(seconds: 1), () {
-        if (!mounted) return;
-        setState(() {
-          revealedCards = i + 1;
-        });
-      });
-    }
+  Future<String> _askOpenAIWithPromptOnly(String question, String systemPrompt) async {
+    // This uses the same logic as generateContextualResponse in RagService, but with no context
+    return await ragService.generateContextualResponse(question, '', systemPrompt: systemPrompt);
   }
+  // Store selected card indices for deck selection (avoid mixin conflict)
+  List<int> deckSelectedIndices = [];
 
-  @override
-  void selectCard(int index, int maxCards) {
-    if (selectedIndices.length >= maxCards) return;
-
+  void deckSelectCard(int index) {
     setState(() {
-      selectedCards[index] = true;
-      selectedIndices.add(index);
-    });
-
-    if (selectedIndices.length == maxCards) {
-      Future.delayed(const Duration(milliseconds: 1500), () {
-        if (!mounted) return;
-        setState(() {
-          // Add null check and safe mapping
-          if (selectedIndices.isNotEmpty) {
-            drawnCards = selectedIndices.map((i) {
-              if (i < TarotService.tarotDeck.length) {
-                return TarotService.tarotDeck[i];
-              }
-              return 'Unknown Card'; // fallback
-            }).toList();
-          }
-          showingDeck = false;
-          revealedCards = 0;
-        });
-        revealCardsOneByOne(maxCards);
-      });
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    print('🚀 ThreeCardDrawPage initState called');
-    try {
-      initializeServices();
-      print('✅ Services initialized successfully');
-    } catch (e, stackTrace) {
-      print('💥 Error in initState: $e');
-      print('💥 Stack trace: $stackTrace');
-    }
-  }
-
-  @override
-  void dispose() {
-    print('🛑 ThreeCardDrawPage dispose called');
-    try {
-      questionController.dispose();
-      super.dispose();
-      print('✅ Dispose completed successfully');
-    } catch (e, stackTrace) {
-      print('💥 Error in dispose: $e');
-      print('💥 Stack trace: $stackTrace');
-    }
-  }
-
-  @override
-  void resetState() {
-    setState(() {
-      drawnCards = null;
-      bonusCards = null;
-      openAIAnswer = null;
-      prompt = null;
-      bonusPrompt = null;
-      bonusOpenAIAnswer = null;
-      customOpenAIAnswer = null;
-      customPrompt = null;
-      isLoading = false;
-      isCustomLoading = false;
-      isBonusLoading = false;
-      
-      // Reset regular selection
-      selectedCards = <bool>[];
-      selectedIndices = <int>[];
-      shuffledDeckOrder = <int>[];
-      showingDeck = false;
-      revealedCards = 0;
-      
-      // Reset bonus selection
-      showingBonusSelection = false;
-      bonusSelectedCards = <bool>[];
-      bonusSelectedIndices = <int>[];
-      
-      questionController.clear();
-    });
-  }
-
-  @override
-  void drawBonusCards() {
-    print('🎲 drawBonusCards called');
-    if (drawnCards == null) {
-      print('❌ No drawn cards for bonus');
-      return;
-    }
-    
-    setState(() {
-      bonusCards = TarotService.drawBonusCards(drawnCards!, 2);
-      print('✅ Bonus cards drawn: $bonusCards');
-    });
-  }
-
-  void showBonusCardSelection() {
-    print('🎲 showBonusCardSelection called');
-    if (drawnCards == null) {
-      print('❌ No drawn cards for bonus selection');
-      return;
-    }
-    
-    setState(() {
-      showingBonusSelection = true;
-      
-      // Initialize selection state for all cards
-      bonusSelectedCards = List.filled(TarotService.tarotDeck.length, false);
-      bonusSelectedIndices = <int>[];
-      
-      print('✅ Bonus selection mode activated');
-    });
-  }
-
-  void selectBonusCard(int index) {
-    print('🎯 selectBonusCard called with index: $index');
-    print('🎯 Current bonusSelectedIndices.length: ${bonusSelectedIndices.length}');
-    print('🎯 Current bonusSelectedCards[index]: ${bonusSelectedCards[index]}');
-    
-    if (bonusSelectedIndices.length >= 2 && !bonusSelectedCards[index]) {
-      print('⚠️ Already selected 2 bonus cards, cannot select more');
-      return;
-    }
-    
-    // Don't allow selecting already drawn cards
-    final cardName = TarotService.tarotDeck[index];
-    print('🎯 Card name at index $index: $cardName');
-    print('🎯 Drawn cards: $drawnCards');
-    
-    if (drawnCards!.contains(cardName)) {
-      print('⚠️ Cannot select already drawn card: $cardName');
-      return;
-    }
-    
-    print('🎯 About to setState...');
-    setState(() {
-      if (bonusSelectedCards[index]) {
-        // Deselect card
-        print('🎯 Deselecting card: $cardName');
-        bonusSelectedCards[index] = false;
-        bonusSelectedIndices.remove(index);
-      } else {
-        // Select card
-        print('🎯 Selecting card: $cardName');
-        bonusSelectedCards[index] = true;
-        bonusSelectedIndices.add(index);
+      if (deckSelectedIndices.contains(index)) {
+        deckSelectedIndices.remove(index);
+      } else if (deckSelectedIndices.length < 3) {
+        deckSelectedIndices.add(index);
       }
-      
-      print('📋 Bonus cards selected: ${bonusSelectedIndices.length}/2');
-      print('📋 Selected indices: $bonusSelectedIndices');
     });
   }
 
-  void confirmBonusSelection() {
-    print('🎯 confirmBonusSelection called');
-    print('🎯 bonusSelectedIndices.length: ${bonusSelectedIndices.length}');
-    print('🎯 bonusSelectedIndices: $bonusSelectedIndices');
-    
-    if (bonusSelectedIndices.length != 2) {
-      print('⚠️ Must select exactly 2 bonus cards');
-      return;
+  void deckConfirmSelection() {
+    setState(() {
+      drawnCards = deckSelectedIndices.map((i) => TarotService.tarotDeck[i]).toList();
+      showingDeck = false;
+      deckSelectedIndices.clear();
+    });
+  }
+  // Store the last system prompt sent to RAG
+  String? lastSystemPrompt;
+    // --- STATE ---
+    String? ragAnswer;
+    String? ragContext;
+    bool isLoading = false;
+    bool showingBonusSelection = false;
+    List<bool> bonusSelectedCards = <bool>[];
+    List<int> bonusSelectedIndices = <int>[];
+    List<String>? bonusCards;
+    String? bonusRagAnswer;
+    String? bonusRagContext;
+    bool isBonusLoading = false;
+
+    @override
+    void initState() {
+      super.initState();
+      initializeServices();
     }
-    
-    print('🎯 About to set bonusCards...');
-    setState(() {
-      bonusCards = bonusSelectedIndices
-          .map((index) => TarotService.tarotDeck[index])
-          .toList();
-      showingBonusSelection = false;
-      
-      print('✅ Bonus cards confirmed: $bonusCards');
-    });
-  }
 
-  void cancelBonusSelection() {
-    setState(() {
-      showingBonusSelection = false;
-      bonusSelectedCards = <bool>[];
-      bonusSelectedIndices = <int>[];
-    });
-  }
+    @override
+    void initializeServices() {
+      super.initializeServices();
+    }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Tirage 3 cartes conseil')),
-      drawer: const AppDrawer(),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              const SizedBox(height: 21),
-              TextField(
-                controller: questionController,
-                decoration: const InputDecoration(
-                  labelText: 'Quel conseil demander ?',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Center(
-                child: ElevatedButton(
-                  onPressed: showDeck,
-                  child: const Text('choisir mes cartes'),
-                ),
-              ),
-              const SizedBox(height: 24),
-              
-              // Regular deck selection
-              if (showingDeck) ...[
-                DeckSelector(
-                  selectedCards: selectedCards,
-                  selectedIndices: selectedIndices,
-                  onCardSelected: (index) => selectCard(index, 3),
-                  maxCards: 3,
-                  shuffledOrder: shuffledDeckOrder,
-                ),
-              ],
+    void showBonusCardSelection() {
+      if (TarotService.tarotDeck.isEmpty) return;
+      setState(() {
+        showingBonusSelection = true;
+        // Mark all cards as not selected for bonus, but visually disable the 3 drawn cards
+        bonusSelectedCards = List.filled(TarotService.tarotDeck.length, false);
+        bonusSelectedIndices = <int>[];
+      });
+    }
 
-              // Rest of your existing code...
-              if (drawnCards != null && !showingDeck)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(
-                    3,
-                    (index) => RevealTarotCard(
-                      revealed: revealedCards > index,
-                      cardName: drawnCards![index],
-                    ),
+    void selectBonusCard(int index) {
+      if (bonusSelectedIndices.length >= 2 && !bonusSelectedCards[index]) return;
+      if (drawnCards != null && drawnCards!.contains(TarotService.tarotDeck[index])) return;
+      setState(() {
+        if (bonusSelectedCards[index]) {
+          bonusSelectedCards[index] = false;
+          bonusSelectedIndices.remove(index);
+        } else {
+          bonusSelectedCards[index] = true;
+          bonusSelectedIndices.add(index);
+        }
+      });
+    }
+
+    void cancelBonusSelection() {
+      setState(() {
+        showingBonusSelection = false;
+        bonusSelectedCards = <bool>[];
+        bonusSelectedIndices = <int>[];
+      });
+    }
+
+    void confirmBonusSelection() {
+      if (bonusSelectedIndices.length != 2) return;
+      setState(() {
+        showingBonusSelection = false;
+        bonusCards = bonusSelectedIndices.map((i) => TarotService.tarotDeck[i]).toList();
+        bonusRagAnswer = null;
+        bonusRagContext = null;
+      });
+    }
+
+    Future<void> askRag() async {
+      if (drawnCards == null || drawnCards!.length != 3) return;
+      if (!mounted) return;
+      final userQuestion = questionController.text.trim();
+      if (userQuestion.isEmpty) return;
+      setState(() {
+        isLoading = true;
+        ragAnswer = null;
+        ragContext = null;
+        lastSystemPrompt = null;
+      });
+      try {
+        // System prompt: mention the three cards and their roles, but no detailed meanings
+        final systemPrompt = "Tu es un expert du tarot. Voici un tirage de 3 cartes :\n"
+          "- 1ère carte (aspects positifs) : ${drawnCards![0]}\n"
+          "- 2ème carte (obstacles/défis) : ${drawnCards![1]}\n"
+          "- 3ème carte (conseils) : ${drawnCards![2]}\n"
+          "Réponds à la question de l'utilisateur en t'appuyant uniquement sur le contexte fourni et sur le rôle de chaque carte.";
+        // Enrich the vector search query with the system prompt and user question
+        final enrichedQuery = systemPrompt + "\n\nQuestion de l'utilisateur : " + userQuestion;
+        // Debug: print the query and prompt
+        // ignore: avoid_print
+        print('RAG QUERY DEBUG: question = "${enrichedQuery}"');
+        // ignore: avoid_print
+        print('RAG QUERY DEBUG: systemPrompt = "${systemPrompt}"');
+        // Pass the enriched query as the question for vector search
+        final result = await ThreeCardRagHelper.askRagForThreeCards(
+          question: enrichedQuery,
+          drawnCards: drawnCards!,
+        );
+        if (mounted) {
+          setState(() {
+            ragAnswer = result['answer'] as String?;
+            ragContext = result['context_used'] as String?;
+            lastSystemPrompt = systemPrompt;
+          });
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            ragAnswer = 'Erreur : $e';
+          });
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            isLoading = false;
+          });
+        }
+      }
+    }
+
+    Future<void> askBonusRag() async {
+      if (drawnCards == null || drawnCards!.length != 3 || bonusCards == null || bonusCards!.length != 2) return;
+      if (!mounted) return;
+      final question = questionController.text.trim();
+      if (question.isEmpty) return;
+      setState(() {
+        isBonusLoading = true;
+        bonusRagAnswer = null;
+        bonusRagContext = null;
+      });
+      try {
+        final systemPrompt = '''
+  Tu es un expert du tarot. Voici un tirage de 5 cartes :
+  - 1ère carte (aspects positifs) : ${drawnCards![0]}
+  - 2ème carte (obstacles/défis) : ${drawnCards![1]}
+  - 3ème carte (conseils) : ${drawnCards![2]}
+  - 4ème carte (bonus) : ${bonusCards![0]}
+  - 5ème carte (bonus) : ${bonusCards![1]}
+
+  Réponds à la question de l'utilisateur en expliquant le rôle de chaque carte dans le contexte de la question, puis donne une synthèse/conseil global.
+  ''';
+        final result = await ragService.askQuestion(
+          question,
+          systemPrompt: systemPrompt,
+        );
+        if (mounted) {
+          setState(() {
+            bonusRagAnswer = result['answer'] as String?;
+            bonusRagContext = result['context_used'] as String?;
+          });
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            bonusRagAnswer = 'Erreur : $e';
+          });
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            isBonusLoading = false;
+          });
+        }
+      }
+    }
+
+    @override
+    Widget build(BuildContext context) {
+                // ...existing code...
+      return Scaffold(
+        appBar: AppBar(title: const Text('Tirage 3 cartes conseil')),
+        drawer: const AppDrawer(),
+        body: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                const SizedBox(height: 21),
+                TextField(
+                  controller: questionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Quel conseil demander ?',
+                    border: OutlineInputBorder(),
                   ),
                 ),
-              if (drawnCards != null) ...[
+                const SizedBox(height: 16),
+                Center(
+                  child: ElevatedButton(
+                    onPressed: showDeck,
+                    child: const Text('choisir mes cartes'),
+                  ),
+                ),
                 const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ElevatedButton(
-                      onPressed: isLoading ? null : askOpenAI,
-                      child: const Text('openAI standard'),
+                if (showingDeck) ...[
+                  const SizedBox(height: 16),
+                  Text('Sélectionnez 3 cartes dans le deck :', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: List.generate(
+                      TarotService.tarotDeck.length,
+                      (index) {
+                        final isSelected = deckSelectedIndices.contains(index);
+                        return GestureDetector(
+                          onTap: () {
+                            deckSelectCard(index);
+                          },
+                          child: Container(
+                            width: 60,
+                            height: 90,
+                            decoration: BoxDecoration(
+                              color: isSelected ? Colors.blueAccent.withOpacity(0.7) : Colors.grey[300],
+                              border: Border.all(
+                                color: isSelected ? Colors.blue : Colors.grey,
+                                width: isSelected ? 3 : 1,
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Center(
+                              child: isSelected
+                                  ? Text(
+                                      TarotService.tarotDeck[index],
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : null,
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                    const SizedBox(width: 16),
-                    ElevatedButton(
-                      onPressed: isCustomLoading ? null : askCustomOpenAI,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.purple,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: const Text('openAI custom'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 32), // <-- 32px margin before prompt label
-                if (prompt != null) ...[
-                  const SelectableText(
-                    'Prompt envoyé à OpenAI :',
-                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.only(top: 16),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.amber[100],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: SelectableText(
-                      prompt!,
-                      style: const TextStyle(fontStyle: FontStyle.italic),
-                    ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: deckSelectedIndices.length == 3 ? deckConfirmSelection : null,
+                    child: const Text('Valider la sélection'),
                   ),
                 ],
-                const SizedBox(height: 16),
-                // STANDARD OpenAI Response - REPLACE THIS SECTION
-                if (isLoading)
-                  const CircularProgressIndicator()
-                else if (openAIAnswer != null)
+                if (showingBonusSelection)
                   Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // OpenAI response display
-                      const SelectableText('Réponse de OpenAI :', style: TextStyle(fontWeight: FontWeight.bold)),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        child: SelectableText(openAIAnswer!),
-                      ),
-                      
-                      // UPDATED BONUS BUTTON - Use manual selection for both flows
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: (bonusCards == null && !isBonusLoading && !showingBonusSelection)
-                            ? showBonusCardSelection  // ✅ Use manual selection instead of drawBonusCards
-                            : null,
-                        child: const Text('bonus +2 cartes conseil'),
-                      ),
-                      
-                      // BONUS DECK SELECTOR (IF SHOWING) - Same as custom flow
-                      if (showingBonusSelection) ...[
-                        const SizedBox(height: 32),
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.blue, width: 2),  // Blue for standard flow
-                            borderRadius: BorderRadius.circular(8),
-                            color: Colors.blue[50],
-                          ),
-                          child: Column(
-                            children: [
-                              Text(
-                                'Choisissez 2 cartes bonus (${2 - bonusSelectedIndices.length} restantes)',
-                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Cartes principales tirées: ${drawnCards?.join(", ") ?? ""}',
-                                style: TextStyle(fontSize: 14, color: Colors.blue[700], fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 16),
-                              
-                              // Same deck grid as in custom flow
-                              GridView.builder(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 5,
-                                  childAspectRatio: 0.65,
-                                  crossAxisSpacing: 6,
-                                  mainAxisSpacing: 6,
-                                ),
-                                itemCount: TarotService.tarotDeck.length,
-                                itemBuilder: (context, index) {
-                                  final shuffledIndex = shuffledDeckOrder.isNotEmpty 
-                                      ? shuffledDeckOrder[index] 
-                                      : index;
-                                  final cardName = TarotService.tarotDeck[shuffledIndex];
-                                  
-                                  final isAlreadyDrawn = drawnCards?.contains(cardName) ?? false;
-                                  final isSelected = bonusSelectedCards[shuffledIndex];
-                                  final isAvailable = !isAlreadyDrawn;
-                                  
-                                  return GestureDetector(
-                                    onTap: isAvailable ? () => selectBonusCard(shuffledIndex) : null,
-                                    child: Card(
-                                      elevation: isAlreadyDrawn ? 4 : 2,
-                                      color: isAlreadyDrawn 
-                                          ? Colors.red[100]
-                                          : isSelected 
-                                              ? Colors.green[200] 
-                                              : Colors.grey[300],
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(8),
-                                          border: isSelected 
-                                              ? Border.all(color: Colors.green, width: 3)
-                                              : isAlreadyDrawn
-                                                  ? Border.all(color: Colors.red, width: 3)
-                                                  : Border.all(color: Colors.grey, width: 1),
-                                        ),
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(4),
-                                          child: Column(
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              Text(
-                                                '${index + 1}',
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: isAlreadyDrawn ? Colors.red[800] : Colors.grey[600],
-                                                ),
-                                              ),
-                                              const SizedBox(height: 2),
-                                              if (isAlreadyDrawn) ...[
-                                                Icon(Icons.star, color: Colors.red[700], size: 20),
-                                                const SizedBox(height: 2),
-                                                Text(
-                                                  cardName,
-                                                  style: TextStyle(
-                                                    fontSize: 8,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.red[800],
-                                                  ),
-                                                  textAlign: TextAlign.center,
-                                                  maxLines: 3,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                                Text(
-                                                  'TIRÉE',
-                                                  style: TextStyle(
-                                                    fontSize: 6,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.red[600],
-                                                  ),
-                                                ),
-                                              ] else if (isSelected) ...[
-                                                Icon(Icons.check_circle, color: Colors.green[700], size: 16),
-                                                const SizedBox(height: 2),
-                                                Text(
-                                                  cardName,
-                                                  style: const TextStyle(
-                                                    fontSize: 9,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.black87,
-                                                  ),
-                                                  textAlign: TextAlign.center,
-                                                  maxLines: 3,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                              ] else ...[
-                                                const Icon(Icons.help_outline, size: 20, color: Colors.grey),
-                                                const SizedBox(height: 2),
-                                                Text('?', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                                              ],
-                                            ],
-                                          ),
-                                        ),
-                                      ),
+                      const SizedBox(height: 16),
+                      Text('Sélectionnez 2 cartes bonus dans le deck :', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: List.generate(
+                          TarotService.tarotDeck.length,
+                          (index) {
+                            final isSelected = bonusSelectedCards[index];
+                            final isDrawn = drawnCards != null && drawnCards!.contains(TarotService.tarotDeck[index]);
+                            return GestureDetector(
+                              onTap: isDrawn ? null : () { selectBonusCard(index); },
+                              child: Opacity(
+                                opacity: isDrawn ? 0.4 : 1.0,
+                                child: Container(
+                                  width: 60,
+                                  height: 90,
+                                  decoration: BoxDecoration(
+                                    color: isDrawn
+                                        ? Colors.blueGrey.withOpacity(0.7)
+                                        : (isSelected ? Colors.orangeAccent.withOpacity(0.7) : Colors.grey[300]),
+                                    border: Border.all(
+                                      color: isDrawn
+                                          ? Colors.blueGrey
+                                          : (isSelected ? Colors.orange : Colors.black26),
+                                      width: isSelected || isDrawn ? 3 : 1,
                                     ),
-                                  );
-                                },
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Center(
+                                    child: isDrawn
+                                        ? Icon(Icons.check, color: Colors.white, size: 20)
+                                        : (isSelected
+                                            ? Text(
+                                                TarotService.tarotDeck[index],
+                                                textAlign: TextAlign.center,
+                                                style: const TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.white,
+                                                ),
+                                              )
+                                            : null),
+                                  ),
+                                ),
                               ),
-                              
-                              const SizedBox(height: 16),
-                              
-                              // Legend and buttons
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 12, height: 12,
-                                        decoration: BoxDecoration(
-                                          color: Colors.red[100],
-                                          border: Border.all(color: Colors.red, width: 2),
-                                          borderRadius: BorderRadius.circular(2),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text('Cartes tirées', style: TextStyle(fontSize: 12, color: Colors.red[700])),
-                                    ],
-                                  ),
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 12, height: 12,
-                                        decoration: BoxDecoration(
-                                          color: Colors.green[200],
-                                          border: Border.all(color: Colors.green, width: 2),
-                                          borderRadius: BorderRadius.circular(2),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text('Sélectionnées', style: TextStyle(fontSize: 12, color: Colors.green[700])),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              
-                              const SizedBox(height: 16),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                children: [
-                                  ElevatedButton(
-                                    onPressed: cancelBonusSelection,
-                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
-                                    child: const Text('Annuler'),
-                                  ),
-                                  ElevatedButton(
-                                    onPressed: bonusSelectedIndices.length == 2 ? confirmBonusSelection : null,
-                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                                    child: Text('Confirmer (${bonusSelectedIndices.length}/2)'),
-                                  ),
-                                ],
-                              ),
-                            ],
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          ElevatedButton(
+                            onPressed: bonusSelectedIndices.length == 2 ? confirmBonusSelection : null,
+                            child: const Text('Valider les bonus'),
                           ),
+                          const SizedBox(width: 16),
+                          ElevatedButton(
+                            onPressed: cancelBonusSelection,
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
+                            child: const Text('Annuler'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                if (drawnCards != null && !showingDeck)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(
+                      3,
+                      (index) => RevealTarotCard(
+                        revealed: true,
+                        cardName: drawnCards![index],
+                      ),
+                    ),
+                  ),
+                if (drawnCards != null) ...[
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ElevatedButton(
+                        onPressed: isLoading ? null : askOpenAICustom,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
                         ),
-                      ],
-                      
-                      // Bonus cards display (if any)
-                      if (bonusCards != null) ...[
-                        const SizedBox(height: 16),
-                        const SelectableText(
-                          'Cartes bonus tirées :',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                        child: const Text('OpenAI custom'),
+                      ),
+                      const SizedBox(width: 16),
+                      ElevatedButton(
+                        onPressed: isLoading ? null : askRag,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.deepPurple,
+                          foregroundColor: Colors.white,
                         ),
-                        Wrap(
-                          spacing: 8,
-                          children: bonusCards!.map((card) => Chip(label: Text(card))).toList(),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: isBonusLoading ? null : askBonusOpenAI,
-                          child: const Text('demander à openAI (bonus)'),
-                        ),
-                        
-                        // Bonus prompt and response
-                        if (bonusPrompt != null) ...[
+                        child: const Text('Réponse IA (RAG)'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+                  if (isLoading)
+                    const CircularProgressIndicator(),
+                  if (ragAnswer != null)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (lastSystemPrompt != null) ...[
+                          const SelectableText('Prompt envoyé à l’IA :', style: TextStyle(fontWeight: FontWeight.bold)),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            child: SelectableText(lastSystemPrompt!),
+                          ),
                           const SizedBox(height: 16),
-                          const SelectableText(
-                            'Prompt envoyé à OpenAI (bonus) :',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        ],
+                        const SelectableText('Réponse IA :', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          child: SelectableText(ragAnswer!),
+                        ),
+                        if (ragContext != null && ragContext!.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          const SelectableText('Contexte utilisé :', style: TextStyle(fontWeight: FontWeight.bold)),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            child: SelectableText(ragContext!),
                           ),
-                          Container(
-                            width: double.infinity,
-                            margin: const EdgeInsets.only(top: 8),
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.green[50],
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: Colors.green, width: 1),
-                            ),
-                            child: SelectableText(
-                              bonusPrompt!,
-                              style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 12),
+                          const SizedBox(height: 24),
+                          Center(
+                            child: ElevatedButton.icon(
+                              icon: const Icon(Icons.add_circle_outline),
+                              label: const Text('Ajouter 2 cartes bonus'),
+                              onPressed: isBonusLoading ? null : showBonusCardSelection,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.orange,
+                                foregroundColor: Colors.white,
+                              ),
                             ),
                           ),
                         ],
-                        
-                        if (isBonusLoading)
-                          const CircularProgressIndicator()
-                        else if (bonusOpenAIAnswer != null)
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 16),
-                              const SelectableText(
-                                'Réponse bonus OpenAI :',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                child: SelectableText(bonusOpenAIAnswer!),
-                              ),
-                            ],
-                          ),
                       ],
-                    ],
-                  ),
-                // Custom OpenAI Response
-                if (customPrompt != null) ...[
-                  const SizedBox(height: 32),
-                  const SelectableText(
-                    'Prompt envoyé à OpenAI (custom) :',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.only(top: 16),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.purple[100],
-                      borderRadius: BorderRadius.circular(8),
                     ),
-                    child: SelectableText(
-                      customPrompt!,
-                      style: const TextStyle(fontStyle: FontStyle.italic),
+                ],
+                if (drawnCards != null)...[
+                  const SizedBox(height: 60),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Réinitialiser'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.redAccent,
+                      foregroundColor: Colors.white,
                     ),
+                    onPressed: () {
+                      resetState();
+                    },
                   ),
                 ],
-                const SizedBox(height: 16),
-                if (isCustomLoading)
-                  const CircularProgressIndicator()
-                else if (customOpenAIAnswer != null)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SelectableText(
-                        'Réponse OpenAI personnalisée :',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        child: SelectableText(customOpenAIAnswer!),
-                      ),
-                      
-                      // BONUS BUTTON
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: (bonusCards == null && !isBonusLoading && !showingBonusSelection)
-                            ? showBonusCardSelection
-                            : null,
-                        child: const Text('bonus +2 cartes conseil'),
-                      ),
-                      
-                      // BONUS DECK SELECTOR (IF SHOWING)
-                      if (showingBonusSelection) ...[
-                        const SizedBox(height: 32),
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.purple, width: 2),
-                            borderRadius: BorderRadius.circular(8),
-                            color: Colors.purple[50],
-                          ),
-                          child: Column(
-                            children: [
-                              Text(
-                                'Choisissez 2 cartes bonus (${2 - bonusSelectedIndices.length} restantes)',
-                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Cartes principales tirées: ${drawnCards?.join(", ") ?? ""}',
-                                style: TextStyle(fontSize: 14, color: Colors.purple[700], fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 16),
-                              
-                              // Bonus cards deck grid - SAME SHUFFLED ORDER AS ORIGINAL
-                              GridView.builder(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 5,
-                                  childAspectRatio: 0.65,
-                                  crossAxisSpacing: 6,
-                                  mainAxisSpacing: 6,
-                                ),
-                                itemCount: TarotService.tarotDeck.length,
-                                itemBuilder: (context, index) {
-                                  // ✅ USE THE SAME SHUFFLED ORDER AS THE REGULAR DECK
-                                  final shuffledIndex = shuffledDeckOrder.isNotEmpty 
-                                      ? shuffledDeckOrder[index] 
-                                      : index;
-                                  final cardName = TarotService.tarotDeck[shuffledIndex];
-                                  
-                                  final isAlreadyDrawn = drawnCards?.contains(cardName) ?? false;
-                                  final isSelected = bonusSelectedCards[shuffledIndex];  // Use shuffledIndex for selection state
-                                  final isAvailable = !isAlreadyDrawn;
-                                  
-                                  return GestureDetector(
-                                    onTap: isAvailable ? () => selectBonusCard(shuffledIndex) : null,  // Pass shuffledIndex
-                                    child: Card(
-                                      elevation: isAlreadyDrawn ? 4 : 2,
-                                      color: isAlreadyDrawn 
-                                          ? Colors.red[100]
-                                          : isSelected 
-                                              ? Colors.green[200] 
-                                              : Colors.grey[300],
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(8),
-                                          border: isSelected 
-                                              ? Border.all(color: Colors.green, width: 3)
-                                              : isAlreadyDrawn
-                                                  ? Border.all(color: Colors.red, width: 3)
-                                                  : Border.all(color: Colors.grey, width: 1),
-                                        ),
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(4),
-                                          child: Column(
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              // Position number (shows shuffled position)
-                                              Text(
-                                                '${index + 1}',  // Display position in shuffled deck
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: isAlreadyDrawn ? Colors.red[800] : Colors.grey[600],
-                                                ),
-                                              ),
-                                              
-                                              const SizedBox(height: 2),
-                                              
-                                              // Card content
-                                              if (isAlreadyDrawn) ...[
-                                                Icon(
-                                                  Icons.star,
-                                                  color: Colors.red[700],
-                                                  size: 20,
-                                                ),
-                                                const SizedBox(height: 2),
-                                                Text(
-                                                  cardName,
-                                                  style: TextStyle(
-                                                    fontSize: 8,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.red[800],
-                                                  ),
-                                                  textAlign: TextAlign.center,
-                                                  maxLines: 3,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                                Text(
-                                                  'TIRÉE',
-                                                  style: TextStyle(
-                                                    fontSize: 6,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.red[600],
-                                                  ),
-                                                ),
-                                              ] else if (isSelected) ...[
-                                                Icon(
-                                                  Icons.check_circle,
-                                                  color: Colors.green[700],
-                                                  size: 16,
-                                                ),
-                                                const SizedBox(height: 2),
-                                                Text(
-                                                  cardName,
-                                                  style: const TextStyle(
-                                                    fontSize: 9,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.black87,
-                                                  ),
-                                                  textAlign: TextAlign.center,
-                                                  maxLines: 3,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                              ] else ...[
-                                                const Icon(
-                                                  Icons.help_outline,
-                                                  size: 20,
-                                                  color: Colors.grey,
-                                                ),
-                                                const SizedBox(height: 2),
-                                                Text(
-                                                  '?',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    color: Colors.grey[600],
-                                                  ),
-                                                ),
-                                              ],
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                              
-                              const SizedBox(height: 16),
-                              
-                              // Legend
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 12,
-                                        height: 12,
-                                        decoration: BoxDecoration(
-                                          color: Colors.red[100],
-                                          border: Border.all(color: Colors.red, width: 2),
-                                          borderRadius: BorderRadius.circular(2),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'Cartes tirées',
-                                        style: TextStyle(fontSize: 12, color: Colors.red[700]),
-                                      ),
-                                    ],
-                                  ),
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 12,
-                                        height: 12,
-                                        decoration: BoxDecoration(
-                                          color: Colors.green[200],
-                                          border: Border.all(color: Colors.green, width: 2),
-                                          borderRadius: BorderRadius.circular(2),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'Sélectionnées',
-                                        style: TextStyle(fontSize: 12, color: Colors.green[700]),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              
-                              const SizedBox(height: 16),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                children: [
-                                  ElevatedButton(
-                                    onPressed: cancelBonusSelection,
-                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
-                                    child: const Text('Annuler'),
-                                  ),
-                                  ElevatedButton(
-                                    onPressed: bonusSelectedIndices.length == 2 
-                                        ? confirmBonusSelection 
-                                        : null,
-                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                                    child: Text('Confirmer (${bonusSelectedIndices.length}/2)'),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                      
-                      // BONUS CARDS DISPLAY (if any)
-                      if (bonusCards != null) ...[
-                        const SizedBox(height: 16),
-                        const SelectableText(
-                          'Cartes bonus tirées :',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        Wrap(
-                          spacing: 8,
-                          children: bonusCards!
-                              .map((card) => Chip(label: Text(card)))
-                              .toList(),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: isBonusLoading ? null : askBonusOpenAI,
-                          child: const Text('demander à openAI (bonus)'),
-                        ),
-                      ],
-                      
-                      // Add this right before the bonus OpenAI response
-                      if (bonusPrompt != null) ...[
-                        const SizedBox(height: 16),
-                        const SelectableText(
-                          'Prompt envoyé à OpenAI (bonus) :',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                        ),
-                        Container(
-                          width: double.infinity,
-                          margin: const EdgeInsets.only(top: 8),
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.green[50],
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: Colors.green, width: 1),
-                          ),
-                          child: SelectableText(
-                            bonusPrompt!,
-                            style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 12),
-                          ),
-                        ),
-                      ],
-
-                      // BONUS OPENAI RESPONSE (if any)
-                      if (isBonusLoading)
-                        const CircularProgressIndicator()
-                      else if (bonusOpenAIAnswer != null)
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 16),
-                            const SelectableText(
-                              'Réponse bonus OpenAI :',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              child: SelectableText(bonusOpenAIAnswer!),
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
-              ],
-              if (drawnCards != null)...[
                 const SizedBox(height: 60),
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Réinitialiser'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.redAccent,
-                    foregroundColor: Colors.white,
-                  ),
-                  onPressed: () {
-                    resetState();
-                  },
-                ),
               ],
-              const SizedBox(height: 60),
-            ],
+            ),
           ),
         ),
-      ),
-    );
-  }
+      );
+    }
 }
 
 class RevealTarotCard extends StatelessWidget {

@@ -157,7 +157,7 @@ class _RagDemoPageState extends State<RagDemoPage> {
                   labelText: 'Posez votre question astrologique',
                   hintText: 'Ex: Que signifie avoir Mars en Bélier?',
                   border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.help_outline),
+                  // prefixIcon: Icon(Icons.help_outline),
                 ),
                 maxLines: 3,
                 // onSubmitted: (_) => _askQuestion(),

@@ -419,7 +419,7 @@ class RagService {
         scoreThreshold: scoreThreshold,
       );
 
-      print('📊 Found ${similarVectors.length} similar vectors');
+      print('Found ${similarVectors.length} similar vectors');
 
       if (similarVectors.isEmpty) {
         return {
