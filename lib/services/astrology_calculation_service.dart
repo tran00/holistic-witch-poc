@@ -199,12 +199,23 @@ class AstrologyCalculationService {
           entry.value,
           SwephFlag.SEFLG_SPEED,
         );
+        
         final longitude = result.longitude;
+        final speed = result.speedInLongitude; // This is the correct field!
         final sign = AstrologyUtils.getZodiacSign(longitude);
         final degree = longitude % 30;
+        final isRetrograde = speed < 0; // Negative speed = retrograde motion
+        
+        // Only print retrograde planets for clarity
+        if (isRetrograde) {
+          print('⭐ RETROGRADE: ${entry.key} at ${longitude.toStringAsFixed(2)}°, speed=${speed.toStringAsFixed(4)}°/day');
+        }
+        
         chartData['planets'][entry.key] = {
-          'name': entry.key, // <-- This is correct!
+          'name': entry.key,
           'longitude': longitude,
+          'speed': speed,
+          'is_retrograde': isRetrograde,
           'sign': sign,
           'degree': degree,
           'formatted': '${sign} ${degree.toStringAsFixed(2)}°',

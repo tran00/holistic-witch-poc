@@ -164,14 +164,14 @@ class NatalWheelPainter extends CustomPainter {
     }
     
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = min(size.width, size.height) / 2 - 66;
+    final radius = min(size.width, size.height) / 2 - 100; // Reduced from -66 to -100 (smaller chart)
 
     // Draw outer circle for houses
     final outerCirclePaint = Paint()
       ..color = Colors.black
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
-    canvas.drawCircle(center, radius + 20, outerCirclePaint); // Outer circle for planets
+    canvas.drawCircle(center, radius + 20, outerCirclePaint); // Adjusted outer circle for new spacing
 
     final houses = (chartData['houses'] is List) ? chartData['houses'] as List : [];
     final ascDegree = (houses.isNotEmpty && houses.first['start_degree'] is num)
@@ -387,7 +387,7 @@ class NatalWheelPainter extends CustomPainter {
     // Draw planets with glyphs - outermost
     if (chartData['planets'] is List) {
       final planets = chartData['planets'] as List;
-      final planetRadius = radius + 40;
+      final planetRadius = radius + 60; // Increased from +40 to +60 (more space from house lines)
 
       for (final planet in planets) {
         final deg = (planet['longitude'] ?? planet['full_degree'] ?? 0).toDouble();
@@ -447,6 +447,42 @@ class NatalWheelPainter extends CustomPainter {
           ),
         );
 
+        // Draw retrograde indicator "R" if planet is retrograde
+        final isRetrograde = planet['is_retrograde'] == true || 
+                            planet['retrograde'] == true ||
+                            (planet['speed'] != null && (planet['speed'] as num) < 0);
+        
+        // Only print debug info for retrograde planets
+        // if (isRetrograde) {
+        //   print('🌟 RETROGRADE DETECTED: $planetName (speed: ${planet['speed']})');
+        // }
+        
+        // Use real retrograde data now
+        if (isRetrograde) {
+          final retroPainter = TextPainter(
+            text: const TextSpan(
+              text: 'R',
+              style: TextStyle(
+                fontSize: 12,  // Made bigger for visibility
+                color: Colors.red,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            textDirection: TextDirection.ltr,
+          )..layout();
+          
+          // Position "R" at the bottom-left of the planet glyph
+          retroPainter.paint(
+            canvas,
+            Offset(
+              px - glyphPainter.width / 2 + 15,     // To the left of the glyph
+              py + glyphPainter.height / 2 - 15,    // Below the glyph
+            ),
+          );
+          
+          // print('🔴 Drew retrograde R for $planetName at position ($px, $py)');
+        }
+
         // Calculate zodiac degrees and minutes (UPDATED - same as working version)
         final rawDegrees = deg;
         final zodiacSign = (rawDegrees / 30).floor().clamp(0, 11);
@@ -496,7 +532,7 @@ class NatalWheelPainter extends CustomPainter {
     // Draw radial degree lines (normals) from planets to degree ruler
     if (chartData['planets'] is List) {
       final planets = chartData['planets'] as List;
-      final planetRadius = radius + 40;
+      final planetRadius = radius + 60; // Updated to match planet positions
       final degreeRulerRadius = zodiacRadiusInner - 2; // Connect to the degree ruler
 
       for (final planet in planets) {
@@ -530,7 +566,7 @@ class NatalWheelPainter extends CustomPainter {
     if(debugDrawLineToPlanet) {
       if (chartData['planets'] is List) {
         final planets = chartData['planets'] as List;
-        final planetRadius = radius + 40;
+        final planetRadius = radius + 60; // Updated to match planet positions
 
         for (final planet in planets) {
           final deg = (planet['longitude'] ?? planet['full_degree'] ?? 0).toDouble();
