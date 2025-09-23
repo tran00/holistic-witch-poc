@@ -85,11 +85,14 @@ class _RagDemoPageState extends State<RagDemoPage> {
         });
         return;
       }
+      // Call OpenAI (askQuestion) and get context actually used
       final result = await _ragService.askQuestion(question);
+      final contextText = result['context_used'] as String? ?? '';
+      final systemPrompt = 'Répondez à la question suivante en utilisant le contexte fourni.\n\nContexte :\n$contextText\n\nQuestion : $question';
       setState(() {
+        _systemPromptSent = systemPrompt;
         _answer = result['answer'] as String?;
         _sources = (result['sources'] as List?)?.cast<Map<String, dynamic>>();
-        _systemPromptSent = result['systemPrompt'] as String?;
       });
     } catch (e) {
       setState(() {
@@ -124,7 +127,7 @@ class _RagDemoPageState extends State<RagDemoPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '🤖 Système RAG Activé',
+                        ' Système RAG Activé',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           color: Colors.blue[800],
                           fontWeight: FontWeight.bold,
