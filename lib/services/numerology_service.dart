@@ -43,42 +43,42 @@ class NumerologyService {
 
   /// Calculate Sphere 2: Sentiment (B, K, T letters × 2)
   static int calculateSphere2(String firstName, String lastName) {
-    return _calculateSphereWithLetters(firstName, lastName, ['B', 'K', 'T'], 2);
+    return _calculateSphereWithLetters(firstName, lastName, ['B', 'K', 'T'], 1);
   }
 
   /// Calculate Sphere 3: Communication (C, L, U letters × 3)
   static int calculateSphere3(String firstName, String lastName) {
-    return _calculateSphereWithLetters(firstName, lastName, ['C', 'L', 'U'], 3);
+    return _calculateSphereWithLetters(firstName, lastName, ['C', 'L', 'U'], 1);
   }
 
   /// Calculate Sphere 4: Work (D, M, V letters × 4)
   static int calculateSphere4(String firstName, String lastName) {
-    return _calculateSphereWithLetters(firstName, lastName, ['D', 'M', 'V'], 4);
+    return _calculateSphereWithLetters(firstName, lastName, ['D', 'M', 'V'], 1);
   }
 
   /// Calculate Sphere 5: Analytical (E, N, W letters × 5)
   static int calculateSphere5(String firstName, String lastName) {
-    return _calculateSphereWithLetters(firstName, lastName, ['E', 'N', 'W'], 5);
+    return _calculateSphereWithLetters(firstName, lastName, ['E', 'N', 'W'], 1);
   }
 
   /// Calculate Sphere 6: Family (F, O, X letters × 6)
   static int calculateSphere6(String firstName, String lastName) {
-    return _calculateSphereWithLetters(firstName, lastName, ['F', 'O', 'X'], 6);
+    return _calculateSphereWithLetters(firstName, lastName, ['F', 'O', 'X'], 1);
   }
 
   /// Calculate Sphere 7: Spirituality (G, P, Y letters × 7)
   static int calculateSphere7(String firstName, String lastName) {
-    return _calculateSphereWithLetters(firstName, lastName, ['G', 'P', 'Y'], 7);
+    return _calculateSphereWithLetters(firstName, lastName, ['G', 'P', 'Y'], 1);
   }
 
   /// Calculate Sphere 8: Talents (H, Q, Z letters × 8)
   static int calculateSphere8(String firstName, String lastName) {
-    return _calculateSphereWithLetters(firstName, lastName, ['H', 'Q', 'Z'], 8);
+    return _calculateSphereWithLetters(firstName, lastName, ['H', 'Q', 'Z'], 1);
   }
 
   /// Calculate Sphere 9: Empathy (I, R letters × 9)
   static int calculateSphere9(String firstName, String lastName) {
-    return _calculateSphereWithLetters(firstName, lastName, ['I', 'R'], 9);
+    return _calculateSphereWithLetters(firstName, lastName, ['I', 'R'], 1);
   }
 
   /// Calculate soul number (sum of all vowels)
