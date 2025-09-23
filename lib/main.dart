@@ -14,6 +14,7 @@ import 'widgets/app_drawer.dart';
 import 'natal_chart_page.dart';
 import 'natal_chart_page_with_sweph.dart';
 import 'daily_chart_page.dart'; // Add this import
+import 'rag_demo_page.dart'; // Add RAG demo page
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -62,6 +63,7 @@ class MyApp extends StatelessWidget {
         '/natal': (context) => const NatalChartPage(),
         '/natal-sweph': (context) => const NatalChartPageWithSweph(),
         '/daily-chart': (context) => const DailyChartPage(), // Add this route
+        '/rag-demo': (context) => const RagDemoPage(), // Add RAG demo route
       },
     );
   }
@@ -131,6 +133,14 @@ class HomePage extends StatelessWidget {
               label: const Text('Numerologie'),
               onPressed: () {
                 Navigator.pushNamed(context, '/numerologie');
+              },
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.psychology),
+              label: const Text('RAG Demo - Test AI'),
+              onPressed: () {
+                Navigator.pushNamed(context, '/rag-demo');
               },
             ),
             // const SizedBox(height: 16),

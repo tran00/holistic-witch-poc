@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../natal_chart_page_with_sweph.dart';  // Add this import
+import '../rag_demo_page.dart';  // Add RAG demo import
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -66,6 +67,19 @@ class AppDrawer extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (context) => const NatalChartPageWithSweph(),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.psychology),
+            title: const Text('Demo RAG - Questions IA'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const RagDemoPage(),
                 ),
               );
             },

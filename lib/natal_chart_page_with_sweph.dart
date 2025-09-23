@@ -8,6 +8,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'openai_client.dart'; 
 import 'services/geocoding_service.dart';
 import 'services/astrology_calculation_service.dart';
+import 'services/chart_interpretation_service.dart';
+import 'services/rag_service.dart';
 import 'utils/astrology_utils.dart';
 
 class NatalChartPageWithSweph extends StatefulWidget {
@@ -34,7 +36,7 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
 
   String? _chartInterpretation;
   bool _isLoadingInterpretation = false;
-  late final OpenAIClient _openAI;
+  late final ChartInterpretationService _chartInterpretationService;
 
   String? _chartPrompt;
   bool _showPromptEditor = false;
@@ -43,7 +45,10 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
   @override
   void initState() {
     super.initState();
-    _openAI = OpenAIClient(dotenv.env['OPENAI_API_KEY'] ?? '');
+    // Initialize OpenAI client and interpretation service with RAG
+    final openAIClient = OpenAIClient(dotenv.env['OPENAI_API_KEY'] ?? '');
+    final ragService = RagService(); // Initialize RAG service
+    _chartInterpretationService = ChartInterpretationService(openAIClient, ragService);
     _initializeApp();
   }
 
@@ -144,60 +149,17 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
     });
 
     try {
-      // Build comprehensive chart data for OpenAI
-      final planets = _chartData!['planets'] as List;
-      final houses = _chartData!['houses'] as List;
+      // Get the prompt that will be sent
+      final prompt = _chartInterpretationService.getLastPrompt(_chartData!);
       
-      String prompt = """En tant qu'astrologue expert, analyse cette carte natale complète et donne une interprétation détaillée:
-
-INFORMATIONS DE NAISSANCE:
-- Nom: ${_chartData!['name'] ?? 'Personne'}
-- Date: ${_chartData!['date']}
-- Heure: ${_chartData!['time']}
-- Lieu: ${_chartData!['location']}
-
-POSITIONS PLANÉTAIRES:""";
-
-      // Add planetary positions
-      for (final planet in planets) {
-        final name = planet['name'];
-        final sign = planet['sign'];
-        final degree = planet['longitude'] ?? planet['full_degree'];
-        final house = AstrologyUtils.findPlanetHouse(planet, houses);
-        prompt += "\n- $name en $sign ${degree?.toStringAsFixed(1)}° (Maison $house)";
-      }
-
-      prompt += "\n\nMAISONS ASTROLOGIQUES:";
-      
-      // Add house cusps
-      for (int i = 0; i < houses.length; i++) {
-        final house = houses[i];
-        final sign = house['sign'];
-        final degree = house['longitude'];
-        prompt += "\n- Maison ${i + 1}: $sign ${degree?.toStringAsFixed(1)}°";
-      }
-
-      prompt += """
-
-DEMANDE D'ANALYSE:
-1. Analyse la personnalité générale basée sur le Soleil, la Lune et l'Ascendant
-2. Décris les traits dominants de caractère
-3. Explique les aspects majeurs entre planètes et leur influence
-4. Analyse les secteurs de vie importants (maisons occupées)
-5. Donne des conseils pour l'évolution personnelle
-6. Mentionne les défis et opportunités principaux
-
-Sois précis, bienveillant et constructif dans ton analyse.
-
-Tu t'adresses à l'utilisateur de manière directe et personnelle.""";
-
-      // Store the prompt
+      // Store the prompt for editing if needed
       setState(() {
         _chartPrompt = prompt;
         _promptController.text = prompt;
       });
 
-      final answer = await _openAI.sendMessage(prompt);
+      // Generate interpretation using the service
+      final answer = await _chartInterpretationService.generateChartInterpretation(_chartData!);
       
       if (mounted) {
         setState(() {
@@ -229,7 +191,7 @@ Tu t'adresses à l'utilisateur de manière directe et personnelle.""";
     });
 
     try {
-      final answer = await _openAI.sendMessage(_promptController.text);
+      final answer = await _chartInterpretationService.sendCustomPrompt(_promptController.text);
       
       if (mounted) {
         setState(() {
