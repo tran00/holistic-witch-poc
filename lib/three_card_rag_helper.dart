@@ -12,6 +12,7 @@ class ThreeCardRagHelper {
     return await ragService.askQuestion(
       question,
       systemPrompt: systemPrompt,
+      contextFilter: 'tarologie',
     );
   }
 }

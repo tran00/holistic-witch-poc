@@ -44,6 +44,7 @@ Sois précis, bienveillant et constructif dans ton analyse.
         topK: 10,
         scoreThreshold: 0.6,
         systemPrompt: systemPrompt,
+        contextFilter: 'astronomie',
       );
 
       return ragResponse['answer'] as String;
@@ -94,7 +95,7 @@ Sois précis, bienveillant et constructif dans ton analyse.
     // Use RAG for custom prompts if available
     if (_ragService != null) {
       try {
-        final ragResponse = await _ragService!.askQuestion(prompt);
+        final ragResponse = await _ragService!.askQuestion(prompt, contextFilter: 'astronomie');
         return ragResponse['answer'] as String;
       } catch (e) {
         print('⚠️ RAG custom prompt failed, falling back: $e');
@@ -119,6 +120,7 @@ Tu es un astrologue expert avec accès à une vaste base de connaissances.
 Réponds aux questions astrologiques en utilisant les informations contextuelles disponibles.
 Cite tes sources quand c'est pertinent et sois précis dans tes explications.
 ''',
+      contextFilter: 'astronomie',
     );
   }
 
@@ -132,6 +134,7 @@ Cite tes sources quand c'est pertinent et sois précis dans tes explications.
       searchTerm,
       topK: 15,
       scoreThreshold: 0.5,
+      contextFilter: 'astronomie',
     );
 
     return ragResults['results'] as List<Map<String, dynamic>>;

@@ -21,7 +21,7 @@ class OpenAIChartService {
   
   /// Standard chat completion
   Future<String> sendMessage(String message) async {
-    return _makeRequest(message, model: 'gpt-3.5-turbo');
+    return _makeRequest(message, model: dotenv.env['OPENAI_CHAT_MODEL'] ?? 'gpt-4o-mini');
   }
   
   /// Specialized method for chart interpretation
@@ -148,10 +148,11 @@ Tu t'adresses à l'utilisateur de manière directe et personnelle.""";
   
   /// Private method for actual API calls
   Future<String> _makeRequest(String message, {
-    String model = 'gpt-3.5-turbo',
+    String? model,
     int maxTokens = 1000,
     double temperature = 0.7,
   }) async {
+    final actualModel = model ?? dotenv.env['OPENAI_CHAT_MODEL'] ?? 'gpt-4o-mini';
     if (_apiKey.isEmpty) {
       throw Exception('OpenAI API key not configured');
     }
@@ -168,11 +169,12 @@ Tu t'adresses à l'utilisateur de manière directe et personnelle.""";
           'Authorization': 'Bearer $_apiKey',
         },
         body: jsonEncode({
-          'model': model,
+          'model': actualModel,
           'messages': [
             {'role': 'user', 'content': message}
           ],
-          'max_tokens': maxTokens,
+          // 'max_tokens': maxTokens,
+          'max_completion_tokens': maxTokens,
           'temperature': temperature,
         }),
       );

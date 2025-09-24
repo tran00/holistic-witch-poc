@@ -252,6 +252,7 @@ class RagService {
     String query, {
     int topK = 5,
     double scoreThreshold = 0.5, // Lowered from 0.7 to capture more relevant matches
+    String? contextFilter,
   }) async {
     try {
       print('🔍 Searching vectors for query: "$query"');
@@ -269,6 +270,14 @@ class RagService {
         'includeMetadata': true,
         'includeValues': false,
       };
+
+      // Add context filter if provided
+      if (contextFilter != null && contextFilter.isNotEmpty) {
+        requestBody['filter'] = {
+          'context': {'\$eq': contextFilter}
+        };
+        print('🎯 Applied context filter: $contextFilter');
+      }
       
       print('🌲 Sending Pinecone request to: $_pineconeHost/query');
       print('🌲 Request body keys: ${requestBody.keys.toList()}');
@@ -408,6 +417,7 @@ class RagService {
     String query, {
     int topK = 5,
     double scoreThreshold = 0.5, // Lowered from 0.7 to capture more relevant matches
+    String? contextFilter,
   }) async {
     try {
       print('🔍 RAG Query: $query');
@@ -417,6 +427,7 @@ class RagService {
         query,
         topK: topK,
         scoreThreshold: scoreThreshold,
+        contextFilter: contextFilter,
       );
 
       print('Found ${similarVectors.length} similar vectors');
@@ -531,18 +542,20 @@ class RagService {
     try {
       print('🤖 Generating AI response for query: "$query"');
       print('🤖 Context length: ${context.length} characters');
-      
+
       final defaultSystemPrompt = '''
 Tu es un assistant IA spécialisé en astrologie et spiritualité. Utilise les informations contextuelles fournies pour répondre à la question de l'utilisateur de manière précise et pertinente.
 
 Si les informations contextuelles ne contiennent pas assez d'éléments pour répondre à la question, dis-le clairement et propose des suggestions alternatives.
-
-Contexte disponible:
-$context
 ''';
 
       final finalSystemPrompt = systemPrompt ?? defaultSystemPrompt;
       print('🤖 System prompt length: ${finalSystemPrompt.length} characters');
+
+      // Construct user message with context + query
+      final userMessage = context.isNotEmpty
+          ? 'Contexte disponible:\n$context\n\nQuestion: $query'
+          : query;
 
       final requestBody = {
         'model': dotenv.env['OPENAI_CHAT_MODEL'] ?? 'gpt-4o-mini',
@@ -553,14 +566,17 @@ $context
           },
           {
             'role': 'user',
-            'content': query,
+            'content': userMessage,
           },
         ],
         'temperature': 0.7,
-        'max_tokens': 1500,
+        'max_completion_tokens': 1500,
       };
       
       print('🤖 Sending request to OpenAI chat API');
+      print('🤖 Request body preview: model=${requestBody['model']}, messages count=${(requestBody['messages'] as List).length}');
+      print('🤖 System message length: ${(requestBody['messages'] as List)[0]['content'].length}');
+      print('🤖 User message length: ${(requestBody['messages'] as List)[1]['content'].length}');
 
       final response = await http.post(
         Uri.parse('${dotenv.env['OPENAI_BASE_URL']}/chat/completions'),
@@ -575,7 +591,21 @@ $context
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final aiResponse = data['choices'][0]['message']['content'];
+        print('🤖 OpenAI response data: ${jsonEncode(data)}');
+        
+        if (data['choices'] == null || data['choices'].isEmpty) {
+          print('❌ OpenAI response has no choices');
+          throw Exception('OpenAI returned no choices in response');
+        }
+        
+        final choice = data['choices'][0];
+        if (choice['message'] == null || choice['message']['content'] == null) {
+          print('❌ OpenAI response has no content in message');
+          print('🤖 Choice data: ${jsonEncode(choice)}');
+          throw Exception('OpenAI returned no content in message');
+        }
+        
+        final aiResponse = choice['message']['content'].toString();
         print('✅ AI response generated: ${aiResponse.length} characters');
         print('✅ AI response preview: ${aiResponse.length > 200 ? aiResponse.substring(0, 200) + "..." : aiResponse}');
         return aiResponse;
@@ -595,6 +625,7 @@ $context
     int topK = 5,
     double scoreThreshold = 0.5, // Lowered from 0.7 to capture more relevant matches
     String? systemPrompt,
+    String? contextFilter,
   }) async {
     try {
       print('🚀 =================== RAG PIPELINE START ===================');
@@ -607,6 +638,7 @@ $context
         question,
         topK: topK,
         scoreThreshold: scoreThreshold,
+        contextFilter: contextFilter,
       );
 
       // Step 2: Generate contextual response

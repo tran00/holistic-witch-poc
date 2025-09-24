@@ -226,6 +226,7 @@ import 'services/prompt_service.dart';
         final result = await ragService.askQuestion(
           enrichedQuery,
           systemPrompt: systemPrompt,
+          contextFilter: 'tarologie',
         );
         if (mounted) {
           setState(() {

@@ -3,6 +3,7 @@ import 'widgets/app_drawer.dart';
 import 'widgets/numerology_analysis_section.dart';
 import 'models/numerology_analysis.dart';
 import 'openai_client.dart';
+import 'rag_service_singleton.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'services/numerology_service.dart';
 import 'services/numerology_descriptions_service.dart';
@@ -15,6 +16,7 @@ class NumerologiePage extends StatefulWidget {
 }
 
 class _NumerologiePageState extends State<NumerologiePage> {
+
   final _formKey = GlobalKey<FormState>();
   final _birthDateController = TextEditingController();
   final _firstNameController = TextEditingController();
@@ -288,6 +290,65 @@ class _NumerologiePageState extends State<NumerologiePage> {
     );
   }
 
+  // --- Sphere OpenAI and RAG analysis helpers ---
+  Future<void> _performSphereOpenAI(String key, String prompt) async {
+    setState(() {
+      analyses[key]!.isLoading = true;
+      analyses[key]!.prompt = prompt;
+      analyses[key]!.answer = null;
+      analyses[key]!.promptType = 'openai';
+    });
+    try {
+      final answer = await _openAI.sendMessage(prompt);
+      if (mounted) {
+        setState(() {
+          analyses[key]!.answer = answer;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          analyses[key]!.answer = 'Erreur : $e';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          analyses[key]!.isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _performSphereRag(String key, String prompt) async {
+    setState(() {
+      analyses[key]!.isLoading = true;
+      analyses[key]!.prompt = prompt;
+      analyses[key]!.answer = null;
+      analyses[key]!.promptType = 'rag';
+    });
+    try {
+      final result = await ragService.askQuestion(prompt, contextFilter: 'numerologie');
+      if (mounted) {
+        setState(() {
+          analyses[key]!.answer = result['answer'] as String?;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          analyses[key]!.answer = 'Erreur : $e';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          analyses[key]!.isLoading = false;
+        });
+      }
+    }
+  }
+
   List<Widget> _buildAnalysisSections(String name) {
     final sections = [
       // Basic analyses
@@ -342,32 +403,30 @@ class _NumerologiePageState extends State<NumerologiePage> {
 
     // Add sphere sections
     final sphereNames = ['Identité', 'Sentiment', 'Communication', 'Travail', 'Analytique', 'Famille', 'Spiritualité', 'Talents', 'Empathie'];
-    final sphereDescriptions = [
-      'l\'identité profonde',
-      'les sentiments, le couple et les relations aux autres', 
-      'la communication, la créativité, les amitiés et les relations sociales',
-      'le travail quotidien, professionnel/école et la famille d\'origine',
-      'l\'aspect analytique de la personnalité',
-      'la famille que vous avez construite ou que vous construisez',
-      'les connaissances spirituelles et intellectuelles',
-      'les talents et l\'argent',
-      'l\'empathie et les relations avec les autres'
-    ];
 
+    // Move the helper methods above this loop
+    // ...existing code...
     for (int i = 0; i < 9; i++) {
-      sections.add(
+      final sphereKey = 'sphere${i + 1}';
+      final sphereAnalysis = "La sphère de ${sphereNames[i].toLowerCase()} se construit avec l'énergie du ${i + 1} que je construis en mode énergie du ${sphereNumbers[i]} Il y a donc le ${i + 1} et le ${sphereNumbers[i]} à prendre en considération pour l'interprétation de chaque sphère.";
+      final promptOpenAI = _createPersonalPrompt(sphereAnalysis, name);
+      final promptRag = _createPersonalPrompt("La sphère de ${sphereNames[i].toLowerCase()} se construit avec l'énergie du ${i + 1} que je construis en mode énergie du ${sphereNumbers[i]}", name); // no number signification for RAG
+      sections.addAll([
         NumerologyAnalysisSection(
-          buttonText: 'Sphère ${i + 1} : ${sphereNames[i]}',
-          isLoading: analyses['sphere${i + 1}']!.isLoading,
-          onPressed: sphereNumbers[i] != null ? () => _performAnalysis(
-            'sphere${i + 1}', sphereNumbers[i]!, 
-            _createPersonalPrompt("analyse la sphère ${i + 1} (${sphereDescriptions[i]}) numéro ${sphereNumbers[i]}", name),
-            "sphère ${i + 1} (${sphereNames[i].toLowerCase()})"
-          ) : null,
-          prompt: analyses['sphere${i + 1}']!.prompt,
-          answer: analyses['sphere${i + 1}']!.answer,
+          buttonText: 'Sphère ${i + 1} : ${sphereNames[i]} (OpenAI)',
+          isLoading: analyses[sphereKey]!.isLoading && analyses[sphereKey]!.promptType == 'openai',
+          onPressed: sphereNumbers[i] != null ? () => _performSphereOpenAI(sphereKey, promptOpenAI) : null,
+          prompt: analyses[sphereKey]!.promptType == 'openai' ? analyses[sphereKey]!.prompt : null,
+          answer: analyses[sphereKey]!.promptType == 'openai' ? analyses[sphereKey]!.answer : null,
         ),
-      );
+        NumerologyAnalysisSection(
+          buttonText: 'Sphère ${i + 1} : ${sphereNames[i]} (RAG)',
+          isLoading: analyses[sphereKey]!.isLoading && analyses[sphereKey]!.promptType == 'rag',
+          onPressed: sphereNumbers[i] != null ? () => _performSphereRag(sphereKey, promptRag) : null,
+          prompt: analyses[sphereKey]!.promptType == 'rag' ? analyses[sphereKey]!.prompt : null,
+          answer: analyses[sphereKey]!.promptType == 'rag' ? analyses[sphereKey]!.answer : null,
+        ),
+      ]);
     }
 
     // Add remaining analyses

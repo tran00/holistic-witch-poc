@@ -21,13 +21,13 @@ class OpenAITarotService {
   
   // Standard chat completion
   Future<String> sendMessage(String message) async {
-    return _makeRequest(message, model: 'gpt-3.5-turbo');
+    return _makeRequest(message, model: dotenv.env['OPENAI_CHAT_MODEL'] ?? 'gpt-4o-mini');
   }
   
   // Specialized method for tarot readings
   Future<String> getTarotReading(String prompt) async {
     return _makeRequest(prompt, 
-      model: 'gpt-3.5-turbo',
+      model: dotenv.env['OPENAI_CHAT_MODEL'] ?? 'gpt-4o-mini',
       maxTokens: 1000,
       temperature: 0.8  // More creative for tarot
     );
@@ -36,7 +36,7 @@ class OpenAITarotService {
   // Specialized method for bonus readings
   Future<String> getBonusReading(String prompt) async {
     return _makeRequest(prompt,
-      model: 'gpt-3.5-turbo', 
+      model: dotenv.env['OPENAI_CHAT_MODEL'] ?? 'gpt-4o-mini', 
       maxTokens: 800,
       temperature: 0.7
     );
@@ -44,10 +44,11 @@ class OpenAITarotService {
   
   // Private method for actual API calls
   Future<String> _makeRequest(String message, {
-    String model = 'gpt-3.5-turbo',
+    String? model,
     int maxTokens = 1000,
     double temperature = 0.7,
   }) async {
+    final actualModel = model ?? dotenv.env['OPENAI_CHAT_MODEL'] ?? 'gpt-4o-mini';
     if (_apiKey.isEmpty) {
       throw Exception('OpenAI API key not configured');
     }
@@ -64,11 +65,12 @@ class OpenAITarotService {
           'Authorization': 'Bearer $_apiKey',
         },
         body: jsonEncode({
-          'model': model,
+          'model': actualModel,
           'messages': [
             {'role': 'user', 'content': message}
           ],
-          'max_tokens': maxTokens,
+          // 'max_tokens': maxTokens,
+          'max_completion_tokens': maxTokens,
           'temperature': temperature,
         }),
       );
