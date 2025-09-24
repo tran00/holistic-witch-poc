@@ -88,9 +88,10 @@ import 'services/prompt_service.dart';
     List<bool> bonusSelectedCards = <bool>[];
     List<int> bonusSelectedIndices = <int>[];
     List<String>? bonusCards;
-    String? bonusRagAnswer;
-    String? bonusRagContext;
-    bool isBonusLoading = false;
+  String? bonusRagAnswer;
+  String? bonusRagContext;
+  String? bonusRagQuery;
+  bool isBonusLoading = false;
 
     @override
     void initState() {
@@ -208,26 +209,33 @@ import 'services/prompt_service.dart';
         bonusRagContext = null;
       });
       try {
-        final systemPrompt = '''
-  Tu es un expert du tarot. Voici un tirage de 5 cartes :
-  - 1ère carte (aspects positifs) : ${drawnCards![0]}
-  - 2ème carte (obstacles/défis) : ${drawnCards![1]}
-  - 3ème carte (conseils) : ${drawnCards![2]}
-  - 4ème carte (bonus) : ${bonusCards![0]}
-  - 5ème carte (bonus) : ${bonusCards![1]}
+        // Build the base prompt as for the 3-card draw
+        final basePrompt = "Tu es un expert du tarot. Voici un tirage de 3 cartes :\n"
+          "- 1ère carte (aspects positifs) : ${drawnCards![0]}\n"
+          "- 2ème carte (obstacles/défis) : ${drawnCards![1]}\n"
+          "- 3ème carte (conseils) : ${drawnCards![2]}\n";
 
-  Réponds à la question de l'utilisateur en expliquant le rôle de chaque carte dans le contexte de la question, puis donne une synthèse/conseil global.
-  ''';
+        // Add the two bonus cards as additional advice (CONSEILS)
+        final bonusAdvice = "\nCONSEILS (actions à entreprendre) : ${bonusCards![0]}, ${bonusCards![1]}";
+
+        final systemPrompt = basePrompt + bonusAdvice + "\n\nRéponds à la question de l'utilisateur en expliquant le rôle de chaque carte dans le contexte de la question, puis donne une synthèse/conseil global.";
+
+        // For the vector search, concatenate the user question as well
+        final enrichedQuery = systemPrompt + "\n\nQuestion de l'utilisateur : " + question;
+
         final result = await ragService.askQuestion(
-          question,
+          enrichedQuery,
           systemPrompt: systemPrompt,
         );
         if (mounted) {
           setState(() {
             bonusRagAnswer = result['answer'] as String?;
             bonusRagContext = result['context_used'] as String?;
+            // Store the actual search query for display
+            bonusRagQuery = enrichedQuery;
           });
         }
+// Removed duplicate local declaration of bonusRagQuery; now only class-level field is used
       } catch (e) {
         if (mounted) {
           setState(() {
@@ -245,7 +253,6 @@ import 'services/prompt_service.dart';
 
     @override
     Widget build(BuildContext context) {
-                // ...existing code...
       return Scaffold(
         appBar: AppBar(title: const Text('Tirage 3 cartes conseil')),
         drawer: const AppDrawer(),
@@ -270,7 +277,7 @@ import 'services/prompt_service.dart';
                   ),
                 ),
                 const SizedBox(height: 24),
-                if (showingDeck) ...[
+                if (showingDeck && !showingBonusSelection) ...[
                   const SizedBox(height: 16),
                   Text('Sélectionnez 3 cartes dans le deck :', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
@@ -320,78 +327,7 @@ import 'services/prompt_service.dart';
                     child: const Text('Valider la sélection'),
                   ),
                 ],
-                if (showingBonusSelection)
-                  Column(
-                    children: [
-                      const SizedBox(height: 16),
-                      Text('Sélectionnez 2 cartes bonus dans le deck :', style: TextStyle(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: List.generate(
-                          TarotService.tarotDeck.length,
-                          (index) {
-                            final isSelected = bonusSelectedCards[index];
-                            final isDrawn = drawnCards != null && drawnCards!.contains(TarotService.tarotDeck[index]);
-                            return GestureDetector(
-                              onTap: isDrawn ? null : () { selectBonusCard(index); },
-                              child: Opacity(
-                                opacity: isDrawn ? 0.4 : 1.0,
-                                child: Container(
-                                  width: 60,
-                                  height: 90,
-                                  decoration: BoxDecoration(
-                                    color: isDrawn
-                                        ? Colors.blueGrey.withOpacity(0.7)
-                                        : (isSelected ? Colors.orangeAccent.withOpacity(0.7) : Colors.grey[300]),
-                                    border: Border.all(
-                                      color: isDrawn
-                                          ? Colors.blueGrey
-                                          : (isSelected ? Colors.orange : Colors.black26),
-                                      width: isSelected || isDrawn ? 3 : 1,
-                                    ),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Center(
-                                    child: isDrawn
-                                        ? Icon(Icons.check, color: Colors.white, size: 20)
-                                        : (isSelected
-                                            ? Text(
-                                                TarotService.tarotDeck[index],
-                                                textAlign: TextAlign.center,
-                                                style: const TextStyle(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Colors.white,
-                                                ),
-                                              )
-                                            : null),
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          ElevatedButton(
-                            onPressed: bonusSelectedIndices.length == 2 ? confirmBonusSelection : null,
-                            child: const Text('Valider les bonus'),
-                          ),
-                          const SizedBox(width: 16),
-                          ElevatedButton(
-                            onPressed: cancelBonusSelection,
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
-                            child: const Text('Annuler'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                // Bonus deck selection UI is now only rendered after the bonus button below
                 if (drawnCards != null && !showingDeck)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -449,11 +385,11 @@ import 'services/prompt_service.dart';
                         ),
                         if (ragContext != null && ragContext!.isNotEmpty) ...[
                           const SizedBox(height: 16),
-                          const SelectableText('Contexte utilisé :', style: TextStyle(fontWeight: FontWeight.bold)),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            child: SelectableText(ragContext!),
-                          ),
+                          // const SelectableText('Contexte utilisé :', style: TextStyle(fontWeight: FontWeight.bold)),
+                          // Padding(
+                          //   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          //   child: SelectableText(ragContext!),
+                          // ),
                           const SizedBox(height: 24),
                           Center(
                             child: ElevatedButton.icon(
@@ -466,7 +402,137 @@ import 'services/prompt_service.dart';
                               ),
                             ),
                           ),
+                          if (showingBonusSelection)
+                            Column(
+                              children: [
+                                const SizedBox(height: 16),
+                                Text('Sélectionnez 2 cartes bonus dans le deck :', style: TextStyle(fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 12),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: List.generate(
+                                    TarotService.tarotDeck.length,
+                                    (index) {
+                                      final isSelected = bonusSelectedCards[index];
+                                      final isDrawn = drawnCards != null && drawnCards!.contains(TarotService.tarotDeck[index]);
+                                      // Show the 3 picked cards and the selected bonus cards with their front face
+                                      if (isDrawn || isSelected) {
+                                        return Container(
+                                          width: 60,
+                                          height: 90,
+                                          decoration: BoxDecoration(
+                                            color: isDrawn
+                                                ? Colors.blueGrey.withOpacity(0.7)
+                                                : Colors.orangeAccent.withOpacity(0.7),
+                                            border: Border.all(
+                                              color: isDrawn
+                                                  ? Colors.blueGrey
+                                                  : Colors.orange,
+                                              width: 3,
+                                            ),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              TarotService.tarotDeck[index],
+                                              textAlign: TextAlign.center,
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                      // All other cards: show as blank (card back)
+                                      return GestureDetector(
+                                        onTap: () { selectBonusCard(index); },
+                                        child: Container(
+                                          width: 60,
+                                          height: 90,
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey[300],
+                                            border: Border.all(
+                                              color: Colors.black26,
+                                              width: 1,
+                                            ),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    ElevatedButton(
+                                      onPressed: cancelBonusSelection,
+                                      style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
+                                      child: const Text('Annuler'),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    ElevatedButton(
+                                      onPressed: bonusSelectedIndices.length == 2 ? () { confirmBonusSelection(); askBonusRag(); } : null,
+                                      child: const Text('Valider les bonus'),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                         ],
+                      ],
+                    ),
+                ],
+                // After confirming bonus selection, show the two bonus cards in large format, with a button to prompt OpenAI RAG, and the prompt/answer below
+                if (bonusCards != null && bonusCards!.length == 2 && !showingBonusSelection) ...[
+                  const SizedBox(height: 32),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(
+                      2,
+                      (index) => RevealTarotCard(
+                        revealed: true,
+                        cardName: bonusCards![index],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Center(
+                    child: ElevatedButton(
+                      onPressed: isBonusLoading ? null : askBonusRag,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepOrange,
+                        foregroundColor: Colors.white,
+                      ),
+                      child: const Text('Demander à l’IA (bonus)'),
+                    ),
+                  ),
+                  if (isBonusLoading)
+                    const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: CircularProgressIndicator(),
+                    ),
+                  if (bonusRagAnswer != null)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (bonusRagQuery != null && bonusRagQuery!.isNotEmpty) ...[
+                          const SelectableText('Prompt envoyé à la recherche (bonus) :', style: TextStyle(fontWeight: FontWeight.bold)),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            child: SelectableText(bonusRagQuery!),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                        const SelectableText('Réponse IA (bonus) :', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          child: SelectableText(bonusRagAnswer!),
+                        ),
                       ],
                     ),
                 ],
