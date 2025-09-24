@@ -558,7 +558,7 @@ Si les informations contextuelles ne contiennent pas assez d'éléments pour ré
           : query;
 
       final requestBody = {
-        'model': dotenv.env['OPENAI_CHAT_MODEL'] ?? 'gpt-4o-mini',
+        'model': dotenv.env['OPENAI_CHAT_MODEL'] ?? dotenv.env['OPENAI_FALLBACK_CHAT_MODEL'],
         'messages': [
           {
             'role': 'system',
