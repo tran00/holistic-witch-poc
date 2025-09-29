@@ -21,13 +21,13 @@ class OpenAITarotService {
   
   // Standard chat completion
   Future<String> sendMessage(String message) async {
-    return _makeRequest(message, model: dotenv.env['OPENAI_CHAT_MODEL'] ?? 'gpt-4o-mini');
+    return _makeRequest(message, model: dotenv.env['OPENAI_CHAT_MODEL'] ?? dotenv.env['OPENAI_FALLBACK_CHAT_MODEL']);
   }
   
   // Specialized method for tarot readings
   Future<String> getTarotReading(String prompt) async {
     return _makeRequest(prompt, 
-      model: dotenv.env['OPENAI_CHAT_MODEL'] ?? 'gpt-4o-mini',
+      model: dotenv.env['OPENAI_CHAT_MODEL'] ?? dotenv.env['OPENAI_FALLBACK_CHAT_MODEL'],
       maxTokens: 1000,
       temperature: 0.8  // More creative for tarot
     );
@@ -36,7 +36,7 @@ class OpenAITarotService {
   // Specialized method for bonus readings
   Future<String> getBonusReading(String prompt) async {
     return _makeRequest(prompt,
-      model: dotenv.env['OPENAI_CHAT_MODEL'] ?? 'gpt-4o-mini', 
+      model: dotenv.env['OPENAI_CHAT_MODEL'] ?? dotenv.env['OPENAI_FALLBACK_CHAT_MODEL'], 
       maxTokens: 800,
       temperature: 0.7
     );
@@ -48,7 +48,7 @@ class OpenAITarotService {
     int maxTokens = 1000,
     double temperature = 0.7,
   }) async {
-    final actualModel = model ?? dotenv.env['OPENAI_CHAT_MODEL'] ?? 'gpt-4o-mini';
+    final actualModel = model ?? dotenv.env['OPENAI_CHAT_MODEL'] ?? dotenv.env['OPENAI_FALLBACK_CHAT_MODEL'];
     if (_apiKey.isEmpty) {
       throw Exception('OpenAI API key not configured');
     }

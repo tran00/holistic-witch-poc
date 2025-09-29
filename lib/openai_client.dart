@@ -36,7 +36,7 @@ class OpenAIClient {
         'Authorization': 'Bearer $apiKey',
       },
       body: jsonEncode({
-        "model": dotenv.env['OPENAI_CHAT_MODEL'] ?? 'gpt-4o-mini',
+        "model": dotenv.env['OPENAI_CHAT_MODEL'] ?? dotenv.env['OPENAI_FALLBACK_CHAT_MODEL'],
         "messages": [
           {"role": "user", "content": prompt}
         ]
