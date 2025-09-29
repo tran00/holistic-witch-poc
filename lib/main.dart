@@ -1,9 +1,6 @@
 import 'dart:async';
-import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'services/openai_tarot_service.dart';
 import 'services/openai_chart_service.dart';
 import 'widgets/chat_bubble.dart';
 import 'numerologie.dart';

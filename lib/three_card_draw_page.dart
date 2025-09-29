@@ -83,14 +83,17 @@ import 'services/prompt_service.dart';
     // --- STATE ---
     String? ragAnswer;
     String? ragContext;
-    bool isLoading = false;
+    @override
+  bool isLoading = false;
     bool showingBonusSelection = false;
     List<bool> bonusSelectedCards = <bool>[];
     List<int> bonusSelectedIndices = <int>[];
-    List<String>? bonusCards;
+    @override
+  List<String>? bonusCards;
   String? bonusRagAnswer;
   String? bonusRagContext;
   String? bonusRagQuery;
+  @override
   bool isBonusLoading = false;
 
     @override
@@ -99,10 +102,6 @@ import 'services/prompt_service.dart';
       initializeServices();
     }
 
-    @override
-    void initializeServices() {
-      super.initializeServices();
-    }
 
     void showBonusCardSelection() {
       if (TarotService.tarotDeck.isEmpty) return;
@@ -165,12 +164,12 @@ import 'services/prompt_service.dart';
           "- 3ème carte (conseils) : ${drawnCards![2]}\n"
           "Réponds à la question de l'utilisateur en t'appuyant uniquement sur le contexte fourni et sur le rôle de chaque carte.";
         // Enrich the vector search query with the system prompt and user question
-        final enrichedQuery = systemPrompt + "\n\nQuestion de l'utilisateur : " + userQuestion;
+        final enrichedQuery = "$systemPrompt\n\nQuestion de l'utilisateur : $userQuestion";
         // Debug: print the query and prompt
         // ignore: avoid_print
-        print('RAG QUERY DEBUG: question = "${enrichedQuery}"');
+        print('RAG QUERY DEBUG: question = "$enrichedQuery"');
         // ignore: avoid_print
-        print('RAG QUERY DEBUG: systemPrompt = "${systemPrompt}"');
+        print('RAG QUERY DEBUG: systemPrompt = "$systemPrompt"');
         // Pass the enriched query as the question for vector search
         final result = await ThreeCardRagHelper.askRagForThreeCards(
           question: enrichedQuery,
@@ -218,10 +217,10 @@ import 'services/prompt_service.dart';
         // Add the two bonus cards as additional advice (CONSEILS)
         final bonusAdvice = "\nCONSEILS (actions à entreprendre) : ${bonusCards![0]}, ${bonusCards![1]}";
 
-        final systemPrompt = basePrompt + bonusAdvice + "\n\nRéponds à la question de l'utilisateur en expliquant le rôle de chaque carte dans le contexte de la question, puis donne une synthèse/conseil global.";
+        final systemPrompt = "$basePrompt$bonusAdvice\n\nRéponds à la question de l'utilisateur en expliquant le rôle de chaque carte dans le contexte de la question, puis donne une synthèse/conseil global.";
 
         // For the vector search, concatenate the user question as well
-        final enrichedQuery = systemPrompt + "\n\nQuestion de l'utilisateur : " + question;
+        final enrichedQuery = "$systemPrompt\n\nQuestion de l'utilisateur : $question";
 
         final result = await ragService.askQuestion(
           enrichedQuery,

@@ -154,8 +154,8 @@ class AstrologyCalculationService {
       // Convert to wheel format
       AstrologyUtils.convertChartDataToWheelFormat(chartData);
 
-      print('🔍 Planets data: ${chartData['planets']}');
-      print('🔍 Houses data: ${chartData['houses']}');
+      // print('🔍 Planets data: ${chartData['planets']}');
+      // print('🔍 Houses data: ${chartData['houses']}');
 
       // print('🔍 Planets data: ${chartData['planets']}');
       // for (final planet in chartData['planets'].values) {
@@ -230,7 +230,7 @@ class AstrologyCalculationService {
       }
     }
     // Calculate additional points
-    // await _calculateAdditionalPoints(julianDay, chartData);
+    await _calculateAdditionalPoints(julianDay, chartData);
   }
 
   /// Calculate additional astrological points
@@ -239,12 +239,16 @@ class AstrologyCalculationService {
     Map<String, dynamic> chartData,
   ) async {
     // Add Chiron
+    print('---------------------------------');
+    print('📍 Calculating additional points') ;
     try {
       final chironResult = Sweph.swe_calc_ut(
         julianDay,
         HeavenlyBody.SE_CHIRON,
         SwephFlag.SEFLG_SPEED,
       );
+
+      print('Chiron calculation result: $chironResult');
 
       final longitude = chironResult.longitude;
       final sign = AstrologyUtils.getZodiacSign(longitude);

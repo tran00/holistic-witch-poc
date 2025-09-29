@@ -512,7 +512,7 @@ class RagService {
     final context = contextParts.join('\n\n---\n\n');
       
       print('📝 Context length: ${context.length} characters');
-      print('📝 Context preview: ${context.length > 200 ? context.substring(0, 200) + "..." : context}');
+      print('📝 Context preview: ${context.length > 200 ? "${context.substring(0, 200)}..." : context}');
 
       print('✅ RAG query completed with ${enrichedResults.length} results');
 
@@ -607,7 +607,7 @@ Si les informations contextuelles ne contiennent pas assez d'éléments pour ré
         
         final aiResponse = choice['message']['content'].toString();
         print('✅ AI response generated: ${aiResponse.length} characters');
-        print('✅ AI response preview: ${aiResponse.length > 200 ? aiResponse.substring(0, 200) + "..." : aiResponse}');
+        print('✅ AI response preview: ${aiResponse.length > 200 ? "${aiResponse.substring(0, 200)}..." : aiResponse}');
         return aiResponse;
       } else {
         print('❌ OpenAI chat error: ${response.statusCode} - ${response.body}');

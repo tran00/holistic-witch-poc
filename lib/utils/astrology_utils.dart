@@ -149,7 +149,7 @@ class AstrologyUtils {
       }
 
       if (!assigned) {
-        print('⚠️ Planet ${planet['name']} at ${degree}° not assigned to any house');
+        print('⚠️ Planet ${planet['name']} at $degree° not assigned to any house');
       }
     }
   }

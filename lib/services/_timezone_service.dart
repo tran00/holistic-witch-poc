@@ -36,16 +36,18 @@ class TimezoneService {
     
     // North America
     if (latitude >= 25 && latitude <= 70 && longitude >= -170 && longitude <= -50) {
-      if (longitude >= -85) return 'America/New_York'; // Eastern US
-      else if (longitude >= -105) return 'America/Chicago'; // Central US
+      if (longitude >= -85) {
+        return 'America/New_York'; // Eastern US
+      } else if (longitude >= -105) return 'America/Chicago'; // Central US
       else if (longitude >= -125) return 'America/Denver'; // Mountain US
       else return 'America/Los_Angeles'; // Pacific US
     }
     
     // Asia
     if (latitude >= 0 && latitude <= 70 && longitude >= 40 && longitude <= 180) {
-      if (longitude >= 40 && longitude <= 80) return 'Europe/Moscow'; // Western Asia
-      else if (longitude >= 80 && longitude <= 120) return 'Asia/Shanghai'; // Central/Eastern Asia
+      if (longitude >= 40 && longitude <= 80) {
+        return 'Europe/Moscow'; // Western Asia
+      } else if (longitude >= 80 && longitude <= 120) return 'Asia/Shanghai'; // Central/Eastern Asia
       else return 'Asia/Tokyo'; // Far East Asia
     }
     

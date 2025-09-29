@@ -81,7 +81,7 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
 
   Future<void> _initializeSweph() async {
     try {
-      await Sweph.init(); // <-- This is required!
+      await Sweph.init();
       Sweph.swe_set_ephe_path('assets/sweph/');
       print('✅ Swiss Ephemeris initialized successfully');
     } catch (e) {

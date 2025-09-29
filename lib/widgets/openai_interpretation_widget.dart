@@ -5,9 +5,9 @@ class OpenAIInterpretationWidget extends StatefulWidget {
   final Map<String, dynamic> chartData;
 
   const OpenAIInterpretationWidget({
-    Key? key, // Change from super.key to Key? key
+    super.key, // Change from super.key to Key? key
     required this.chartData,
-  }) : super(key: key); // Add explicit super constructor
+  }); // Add explicit super constructor
 
   @override
   State<OpenAIInterpretationWidget> createState() => _OpenAIInterpretationWidgetState();

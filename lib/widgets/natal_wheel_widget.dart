@@ -81,6 +81,8 @@ class NatalWheelPainter extends CustomPainter {
     if (chartData['planets'] is! List) return;
     
     final planets = chartData['planets'] as List;
+
+    // print(planets);
     
     // Check if we have any nodes
     final hasNorthNode = planets.any((p) => 
@@ -89,15 +91,17 @@ class NatalWheelPainter extends CustomPainter {
       (p['name'] as String).toLowerCase().contains('true node') ||
       (p['name'] as String).toLowerCase().contains('mean node')
     );
-    
+
     final hasSouthNode = planets.any((p) => 
       (p['name'] as String).toLowerCase().contains('south') ||
       (p['name'] as String).toLowerCase().contains('noeud sud')
     );
+
+    // print('north and south node status: $hasNorthNode, $hasSouthNode');
     
     // If no nodes at all, add them at example positions
     if (!hasNorthNode && !hasSouthNode) {
-      // print('🔮 Adding missing North and South Nodes');
+      print('🔮 Adding missing North and South Nodes');
       
       // Add North Node at 120° (example position)
       planets.add({
@@ -115,8 +119,10 @@ class NatalWheelPainter extends CustomPainter {
     }
     // If we have North Node but no South Node, calculate South Node
     else if (hasNorthNode && !hasSouthNode) {
+
       final northNode = planets.firstWhere((p) => 
         (p['name'] as String).toLowerCase().contains('north') ||
+        (p['name'] as String).toLowerCase().contains('North Node') ||
         (p['name'] as String).toLowerCase().contains('noeud nord') ||
         (p['name'] as String).toLowerCase().contains('true node') ||
         (p['name'] as String).toLowerCase().contains('mean node')
@@ -125,8 +131,37 @@ class NatalWheelPainter extends CustomPainter {
       final northDegree = (northNode['longitude'] ?? 0).toDouble();
       final southDegree = (northDegree + 180) % 360;
       
-      // print('🔮 Adding South Node at ${southDegree}° (opposite of North Node at ${northDegree}°)');
+      print('🔮 Adding South Node at ${southDegree}° (opposite of North Node at ${northDegree}°)');
       
+      planets.add({
+        'name': 'South Node',
+        'short_name': 'SN', 
+        'longitude': southDegree,
+      });
+    } else {
+
+      final northNode = planets.firstWhere((p) => 
+        (p['name'] as String).toLowerCase().contains('north') ||
+        (p['name'] as String).toLowerCase().contains('North Node') ||
+        (p['name'] as String).toLowerCase().contains('noeud nord') ||
+        (p['name'] as String).toLowerCase().contains('true node') ||
+        (p['name'] as String).toLowerCase().contains('mean node')
+      );
+      final southhNode = planets.firstWhere((p) => 
+        (p['name'] as String).toLowerCase().contains('south') ||
+        (p['name'] as String).toLowerCase().contains('South Node') ||
+        (p['name'] as String).toLowerCase().contains('noeud sud')
+      );
+      
+      final northDegree = (northNode['longitude'] ?? 0).toDouble();
+      final southDegree = (southhNode['longitude'] ?? 0).toDouble();
+
+      planets.add({
+        'name': 'North Node',
+        'short_name': 'NN', 
+        'longitude': northDegree,
+      });
+
       planets.add({
         'name': 'South Node',
         'short_name': 'SN', 
@@ -138,25 +173,34 @@ class NatalWheelPainter extends CustomPainter {
     final hasChiron = planets.any((p) => 
       (p['name'] as String).toLowerCase() == 'chiron'
     );
-    
-    if (!hasChiron) {
-      // print('🔮 Adding missing Chiron');
+
+    if(hasChiron) {
+      final chironNode = planets.firstWhere((p) => 
+        (p['name'] as String).toLowerCase().contains('chiron')
+      );
+      
+      final chironDegree = (chironNode['longitude'] ?? 0).toDouble();
+
       planets.add({
         'name': 'Chiron',
-        'short_name': 'Ch',
-        'longitude': 45.0, // Example position
-      });
+        'short_name': 'Ch', 
+        'longitude': chironDegree,
+      }); 
+
+      // print('Chiron degree: $chironDegree');
+    } else {
+      // print('Chiron not found');
     }
   }
 
   @override
   void paint(Canvas canvas, Size size) {
     // Add missing nodes before drawing
-    _addMissingNodes();
+    // _addMissingNodes();
     
     // Debug: Print all planets after adding nodes
     if (chartData['planets'] is List) {
-      final planets = chartData['planets'] as List;
+      // final planets = chartData['planets'] as List;
       // print('🌟 Final planets list:');
       // for (final planet in planets) {
       //   print('  - ${planet['name']} at ${planet['longitude']}°');
@@ -298,15 +342,15 @@ class NatalWheelPainter extends CustomPainter {
         final houseNumber = house['house_id'] ?? (i + 1);
         final isAngularHouse = [1, 4, 7, 10].contains(houseNumber); // AC, IC, DC, MC
         
-        final triangleRadius = isAngularHouse ? houseLineOuter : houseLineOuter - 25; // Position triangle slightly beyond the cusp line
-        final triangleSize = isAngularHouse ? 14.0 : 4.0; // Bigger triangles for angular houses
+        final triangleRadius = isAngularHouse ? houseLineOuter : houseLineOuter - 25; // Position angular triangles at house line
+        final triangleSize = isAngularHouse ? 12.0 : 4.0; // Reasonable size for angular houses
         final triangleCenter = center + Offset(triangleRadius * cos(angle), triangleRadius * sin(angle));
         
-        // Create triangle (inward for angular houses, outward for regular houses)
+        // Create triangle (outward for angular houses, outward for regular houses)
         final trianglePath = Path();
         
         if (isAngularHouse) {
-          // Angular houses: Triangle tip points INWARD toward center
+          // Angular houses: Triangle tip points INWARD from center (more visible)
           final tipOffset = triangleCenter - Offset(triangleSize * cos(angle), triangleSize * sin(angle));
           // Triangle base points (perpendicular to radius)
           final baseLeft = triangleCenter + Offset(
@@ -342,7 +386,7 @@ class NatalWheelPainter extends CustomPainter {
         
         // Use different colors for angular houses
         final triangleColor = isAngularHouse ? Colors.red : Colors.deepPurple;
-        final strokeWidth = isAngularHouse ? 1.0 : 0.5;
+        final strokeWidth = isAngularHouse ? 2.0 : 0.5;
         
         canvas.drawPath(
           trianglePath,
@@ -359,6 +403,50 @@ class NatalWheelPainter extends CustomPainter {
             ..style = PaintingStyle.stroke
             ..strokeWidth = strokeWidth,
         );
+
+        // Add text labels for angular houses
+        if (isAngularHouse) {
+          String angleLabel;
+          switch (houseNumber) {
+            case 1:
+              angleLabel = 'ASC';
+              break;
+            case 4:
+              angleLabel = 'IC';
+              break;
+            case 7:
+              angleLabel = 'DSC';
+              break;
+            case 10:
+              angleLabel = 'MC';
+              break;
+            default:
+              angleLabel = '';
+          }
+          
+          final labelRadius = triangleRadius + 25; // Position label further out
+          final labelCenter = center + Offset(labelRadius * cos(angle), labelRadius * sin(angle));
+          
+          final textPainter = TextPainter(
+            text: TextSpan(
+              text: angleLabel,
+              style: const TextStyle(
+                fontSize: 12, 
+                color: Colors.red, 
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            textDirection: TextDirection.ltr,
+          )..layout();
+          
+          textPainter.paint(
+            canvas, 
+            Offset(
+              labelCenter.dx - textPainter.width / 2,
+              labelCenter.dy - textPainter.height / 2,
+            ),
+          );
+        }
 
         // Draw house number at the middle of the house
         final endDeg = (houses[i]['end_degree'] as num).toDouble();
@@ -397,6 +485,8 @@ class NatalWheelPainter extends CustomPainter {
 
         final planetName = planet['name'] ?? '';
         final shortName = planet['short_name'] ?? '';
+
+        // print('🪐 Drawing planet: $planetName at ${deg}° (short: "$shortName")');
 
         // Try multiple ways to find the glyph
         String glyph = planetGlyphs[planetName] ?? 
@@ -587,34 +677,34 @@ class NatalWheelPainter extends CustomPainter {
     }
 
     // Draw Ascendant and MC labels (fixed positions)
-    if (chartData['ascendant'] != null) {
-      final angle = -pi; // Left (9 o'clock)
-      final ax = center.dx + (radius + 50) * cos(angle);
-      final ay = center.dy + (radius + 50) * sin(angle);
+    // if (chartData['ascendant'] != null) {
+    //   final angle = -pi; // Left (9 o'clock)
+    //   final ax = center.dx + (radius + 50) * cos(angle);
+    //   final ay = center.dy + (radius + 50) * sin(angle);
 
-      final textPainter = TextPainter(
-        text: const TextSpan(
-          text: 'ASC',
-          style: TextStyle(fontSize: 14, color: Colors.red, fontWeight: FontWeight.bold),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      textPainter.paint(canvas, Offset(ax - 12, ay - 12));
-    }
-    if (chartData['mc'] != null) {
-      final angle = -pi / 2; // Top (12 o'clock)
-      final mx = center.dx + (radius + 50) * cos(angle);
-      final my = center.dy + (radius + 50) * sin(angle);
+    //   final textPainter = TextPainter(
+    //     text: const TextSpan(
+    //       text: 'ASC',
+    //       style: TextStyle(fontSize: 14, color: Colors.red, fontWeight: FontWeight.bold),
+    //     ),
+    //     textDirection: TextDirection.ltr,
+    //   )..layout();
+    //   textPainter.paint(canvas, Offset(ax - 12, ay - 12));
+    // }
+    // if (chartData['mc'] != null) {
+    //   final angle = -pi / 2; // Top (12 o'clock)
+    //   final mx = center.dx + (radius + 50) * cos(angle);
+    //   final my = center.dy + (radius + 50) * sin(angle);
 
-      final textPainter = TextPainter(
-        text: const TextSpan(
-          text: 'MC',
-          style: TextStyle(fontSize: 14, color: Colors.teal, fontWeight: FontWeight.bold),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      textPainter.paint(canvas, Offset(mx - 12, my - 12));
-    }
+    //   final textPainter = TextPainter(
+    //     text: const TextSpan(
+    //       text: 'MC',
+    //       style: TextStyle(fontSize: 14, color: Colors.teal, fontWeight: FontWeight.bold),
+    //     ),
+    //     textDirection: TextDirection.ltr,
+    //   )..layout();
+    //   textPainter.paint(canvas, Offset(mx - 12, my - 12));
+    // }
 
     // Draw the aspects circle (faint circle at aspect radius)
     final aspectRadius = radius - 60;
@@ -769,39 +859,4 @@ class NatalWheelPainter extends CustomPainter {
 
 double angleForDegree(double deg, double ascDegree) {
   return (-pi / 2) - (deg - ascDegree) * pi / 180; // Changed + to -
-}
-
-// In your chart data processing, add this logic:
-void _addSouthNodeIfMissing(Map<String, dynamic> chartData) {
-  if (chartData['planets'] is List) {
-    final planets = chartData['planets'] as List;
-    
-    // Find North Node
-    final northNode = planets.firstWhere(
-      (p) => (p['name'] as String).toLowerCase().contains('north') ||
-             (p['name'] as String).toLowerCase().contains('noeud nord'),
-      orElse: () => null,
-    );
-    
-    if (northNode != null) {
-      // Check if South Node already exists
-      final southNodeExists = planets.any(
-        (p) => (p['name'] as String).toLowerCase().contains('south') ||
-               (p['name'] as String).toLowerCase().contains('noeud sud'),
-      );
-      
-      if (!southNodeExists) {
-        // Calculate South Node (opposite of North Node)
-        final northNodeDegree = (northNode['longitude'] ?? 0).toDouble();
-        final southNodeDegree = (northNodeDegree + 180) % 360;
-        
-        // Add South Node to planets list
-        planets.add({
-          'name': 'South Node',
-          'longitude': southNodeDegree,
-          'short_name': 'SN',
-        });
-      }
-    }
-  }
 }

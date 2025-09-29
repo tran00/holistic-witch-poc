@@ -118,7 +118,7 @@ class SwephService {
           'full_degree': longitude,
           'sign': sign,
           'degree': degree,
-          'formatted': '${sign} ${degree.toStringAsFixed(2)}°',
+          'formatted': '$sign ${degree.toStringAsFixed(2)}°',
         };
       } catch (e) {
         print('❌ Error calculating ${planet[1]}: $e');
@@ -155,7 +155,7 @@ class SwephService {
         'full_degree': longitude,
         'sign': sign,
         'degree': longitude % 30,
-        'formatted': '${sign} ${(longitude % 30).toStringAsFixed(2)}°',
+        'formatted': '$sign ${(longitude % 30).toStringAsFixed(2)}°',
       };
     } catch (e) {
       print('❌ Error calculating Chiron: $e');
@@ -182,7 +182,7 @@ class SwephService {
         'full_degree': northNodeLongitude,
         'sign': northNodeSign,
         'degree': northNodeLongitude % 30,
-        'formatted': '${northNodeSign} ${(northNodeLongitude % 30).toStringAsFixed(2)}°',
+        'formatted': '$northNodeSign ${(northNodeLongitude % 30).toStringAsFixed(2)}°',
       };
 
       // Calculate South Node (opposite of North Node)
@@ -199,7 +199,7 @@ class SwephService {
         'full_degree': southNodeLongitude,
         'sign': southNodeSign,
         'degree': southNodeLongitude % 30,
-        'formatted': '${southNodeSign} ${(southNodeLongitude % 30).toStringAsFixed(2)}°',
+        'formatted': '$southNodeSign ${(southNodeLongitude % 30).toStringAsFixed(2)}°',
       };
     } catch (e) {
       print('❌ Error calculating Lunar Nodes: $e');
@@ -244,7 +244,7 @@ class SwephService {
             'longitude': houseLon,
             'sign': sign,
             'degree': houseLon % 30,
-            'formatted': '${sign} ${(houseLon % 30).toStringAsFixed(2)}°',
+            'formatted': '$sign ${(houseLon % 30).toStringAsFixed(2)}°',
             'start_degree': houseLon,
             'end_degree': nextHouseLon,
             'planets': [],

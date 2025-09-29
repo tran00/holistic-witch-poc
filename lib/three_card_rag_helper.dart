@@ -1,5 +1,4 @@
 import 'rag_service_singleton.dart';
-import 'services/prompt_service.dart';
 
 /// Helper for RAG integration in three card draw
 class ThreeCardRagHelper {

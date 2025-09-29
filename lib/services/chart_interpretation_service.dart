@@ -39,7 +39,7 @@ Sois précis, bienveillant et constructif dans ton analyse.
 ''';
 
       // Get RAG-enhanced response
-      final ragResponse = await _ragService!.askQuestion(
+      final ragResponse = await _ragService.askQuestion(
         query,
         topK: 10,
         scoreThreshold: 0.6,
@@ -95,7 +95,7 @@ Sois précis, bienveillant et constructif dans ton analyse.
     // Use RAG for custom prompts if available
     if (_ragService != null) {
       try {
-        final ragResponse = await _ragService!.askQuestion(prompt, contextFilter: 'astronomie');
+        final ragResponse = await _ragService.askQuestion(prompt, contextFilter: 'astronomie');
         return ragResponse['answer'] as String;
       } catch (e) {
         print('⚠️ RAG custom prompt failed, falling back: $e');
@@ -111,7 +111,7 @@ Sois précis, bienveillant et constructif dans ton analyse.
       throw Exception('RAG service not available');
     }
 
-    return await _ragService!.askQuestion(
+    return await _ragService.askQuestion(
       question,
       topK: 8,
       scoreThreshold: 0.5, // Lowered from 0.7 to capture more relevant matches
@@ -130,7 +130,7 @@ Cite tes sources quand c'est pertinent et sois précis dans tes explications.
       throw Exception('RAG service not available');
     }
 
-    final ragResults = await _ragService!.performRagQuery(
+    final ragResults = await _ragService.performRagQuery(
       searchTerm,
       topK: 15,
       scoreThreshold: 0.5,
