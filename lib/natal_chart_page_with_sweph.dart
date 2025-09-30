@@ -8,6 +8,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'openai_client.dart'; 
 import 'services/geocoding_service.dart';
 import 'services/astrology_calculation_service.dart';
+import 'services/unified_astrology_service.dart';
 import 'services/chart_interpretation_service.dart';
 import 'services/rag_service.dart';
 import 'utils/astrology_utils.dart';
@@ -116,7 +117,9 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
     });
 
     try {
-      final chartData = await AstrologyCalculationService.calculateChart(
+      // final chartData = await AstrologyCalculationService.calculateChart(
+      final chartData = await UnifiedAstrologyService.calculateChartFromUserInput(
+        
         name: _nameController.text,
         date: _dateController.text,
         time: _timeController.text,
