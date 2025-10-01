@@ -23,6 +23,8 @@ class NatalChartPageWithSweph extends StatefulWidget {
 }
 
 class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
+  // Add two more slots for house and zodiac analysis
+  final int _extraAnalysisCount = 2;
   final TextEditingController _dateController = TextEditingController();
   final TextEditingController _timeController = TextEditingController();
   final TextEditingController _latController = TextEditingController();
@@ -45,8 +47,112 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
   final TextEditingController _promptController = TextEditingController();
 
   // Store RAG query and answer for each button
-  List<Map<String, String?>> _ragResults = List.generate(10, (index) => {'query': null, 'answer': null});
+  List<Map<String, String?>> _ragResults = List.generate(12, (index) => {'query': null, 'answer': null});
+  Future<void> _analyzeHouses() async {
+    if (_chartData == null) return;
+    final idx = 10; // index for houses analysis
+    setState(() {
+      _isLoadingInterpretation = true;
+      _chartInterpretation = null;
+      _ragResults[idx] = {'query': null, 'answer': null};
+    });
+    try {
+      // Build a summary of houses
+      final houses = _chartData!['houses'] as List?;
+      if (houses == null) throw Exception('No houses data');
+      final houseStrings = houses.asMap().entries.map((entry) {
+        final i = entry.key + 1;
+        final h = entry.value;
+        final sign = h['sign'] ?? '';
+        final deg = h['longitude'] != null ? AstrologyUtils.formatDegreeMinute(h['longitude']) : '';
+        return 'Maison $i: $sign $deg';
+      }).join('\n');
+      final retrieverQuery = 'Que signifient les positions des maisons suivantes en astrologie ?\n' + houseStrings;
+      final prompt = """Vous êtes un astrologue qui répond de façon poétique et symbolique.\nAnalysez la signification des maisons astrologiques suivantes pour ce thème natal.\nN'utilisez pas de titres structurés.\n\n$houseStrings\n""";
+      setState(() {
+        _ragResults[idx]['query'] = retrieverQuery;
+      });
+      final answer = await ragService.askQuestion(retrieverQuery, systemPrompt: prompt);
+      final responseText = answer['answer'] ?? '';
+      if (mounted) {
+        setState(() {
+          _chartInterpretation = responseText;
+          _ragResults[idx]['answer'] = responseText;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _chartInterpretation = 'Erreur lors de l\'analyse des maisons: $e';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingInterpretation = false;
+        });
+      }
+    }
+  }
 
+/*
+  Future<void> _analyzeZodiacs() async {
+    if (_chartData == null) return;
+    final idx = 11; // index for zodiac analysis
+    setState(() {
+      _isLoadingInterpretation = true;
+      _chartInterpretation = null;
+      _ragResults[idx] = {'query': null, 'answer': null};
+    });
+    try {
+      // Build a summary of zodiac sign distribution
+      final planets = _chartData!['planets'] as List?;
+      if (planets == null) throw Exception('No planets data');
+      // Count planets per sign and per house
+      final signHouseCounts = <String, Map<int, int>>{}; // sign -> {houseNum: count}
+      for (final planet in planets) {
+        final sign = planet['sign'] ?? '';
+        final house = planet['house'] ?? null;
+        if (sign.isEmpty || house == null) continue;
+        final houseNum = house is int ? house : int.tryParse(house.toString()) ?? 0;
+        if (houseNum == 0) continue;
+        signHouseCounts.putIfAbsent(sign, () => {});
+        signHouseCounts[sign]![houseNum] = (signHouseCounts[sign]![houseNum] ?? 0) + 1;
+      }
+      // Format: Bélier maison 1: 2, Taureau maison 2: 1, ...
+      final signSummary = signHouseCounts.entries.expand((signEntry) {
+        final sign = signEntry.key;
+        return signEntry.value.entries.map((houseEntry) =>
+          '$sign maison ${houseEntry.key}: ${houseEntry.value}');
+      }).join(', ');
+      final retrieverQuery = 'Que signifie la répartition des planètes dans les signes du zodiaque et maisons suivante ? ' + signSummary;
+      final prompt = """Vous êtes un astrologue qui répond de façon poétique et symbolique.\nAnalysez la répartition des planètes dans les signes du zodiaque et les maisons pour ce thème natal.\nN'utilisez pas de titres structurés.\n\n$signSummary\n""";
+      setState(() {
+        _ragResults[idx]['query'] = retrieverQuery;
+      });
+      final answer = await ragService.askQuestion(retrieverQuery, systemPrompt: prompt);
+      final responseText = answer['answer'] ?? '';
+      if (mounted) {
+        setState(() {
+          _chartInterpretation = responseText;
+          _ragResults[idx]['answer'] = responseText;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _chartInterpretation = 'Erreur lors de l\'analyse des signes: $e';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingInterpretation = false;
+        });
+      }
+    }
+  }
+*/
   // Astrology tone categories (id, name, description, narration)
   final List<Map<String, String>> _astrologyToneCategories = [
     {
@@ -688,21 +794,62 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
                   alignment: WrapAlignment.center,
                   spacing: 8,
                   runSpacing: 8,
-                  children: List.generate(_astrologyToneCategories.length, (idx) {
-                    final cat = _astrologyToneCategories[idx];
-                    return Column(
+                  children: [
+                    ...List.generate(_astrologyToneCategories.length, (idx) {
+                      final cat = _astrologyToneCategories[idx];
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ElevatedButton(
+                            onPressed: _isLoadingInterpretation ? null : () => _askOpenAIInterpretationCategory(idx),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.deepPurple,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            ),
+                            child: Text(cat['name']!.isNotEmpty ? cat['name']! : 'Synthèse', textAlign: TextAlign.center),
+                          ),
+                          if (_ragResults[idx]['query'] != null || _ragResults[idx]['answer'] != null)
+                            Container(
+                              margin: const EdgeInsets.only(top: 6, bottom: 16),
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[50],
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.grey[300]!),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (_ragResults[idx]['query'] != null) ...[
+                                    const Text('RAG Query:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                    SelectableText(_ragResults[idx]['query'] ?? '', style: TextStyle(fontSize: 12, fontFamily: 'monospace')),
+                                    const SizedBox(height: 6),
+                                  ],
+                                  if (_ragResults[idx]['answer'] != null) ...[
+                                    const Text('Réponse IA:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                    SelectableText(_ragResults[idx]['answer'] ?? '', style: TextStyle(fontSize: 13)),
+                                  ],
+                                ],
+                              ),
+                            ),
+                        ],
+                      );
+                    }),
+                    // Button for house analysis
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         ElevatedButton(
-                          onPressed: _isLoadingInterpretation ? null : () => _askOpenAIInterpretationCategory(idx),
+                          onPressed: _isLoadingInterpretation ? null : _analyzeHouses,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.deepPurple,
+                            backgroundColor: Colors.orange,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                           ),
-                          child: Text(cat['name']!.isNotEmpty ? cat['name']! : 'Synthèse', textAlign: TextAlign.center),
+                          child: const Text('Analyse des Maisons', textAlign: TextAlign.center),
                         ),
-                        if (_ragResults[idx]['query'] != null || _ragResults[idx]['answer'] != null)
+                        if (_ragResults[10]['query'] != null || _ragResults[10]['answer'] != null)
                           Container(
                             margin: const EdgeInsets.only(top: 6, bottom: 16),
                             padding: const EdgeInsets.all(10),
@@ -714,21 +861,60 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                if (_ragResults[idx]['query'] != null) ...[
+                                if (_ragResults[10]['query'] != null) ...[
                                   const Text('RAG Query:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                                  SelectableText(_ragResults[idx]['query'] ?? '', style: TextStyle(fontSize: 12, fontFamily: 'monospace')),
+                                  SelectableText(_ragResults[10]['query'] ?? '', style: TextStyle(fontSize: 12, fontFamily: 'monospace')),
                                   const SizedBox(height: 6),
                                 ],
-                                if (_ragResults[idx]['answer'] != null) ...[
+                                if (_ragResults[10]['answer'] != null) ...[
                                   const Text('Réponse IA:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                                  SelectableText(_ragResults[idx]['answer'] ?? '', style: TextStyle(fontSize: 13)),
+                                  SelectableText(_ragResults[10]['answer'] ?? '', style: TextStyle(fontSize: 13)),
                                 ],
                               ],
                             ),
                           ),
                       ],
-                    );
-                  })
+                    ),
+                    // Button for zodiac analysis
+                    // Column(
+                    //   crossAxisAlignment: CrossAxisAlignment.start,
+                    //   children: [
+                    //     ElevatedButton(
+                    //       onPressed: _isLoadingInterpretation ? null : _analyzeZodiacs,
+                    //       style: ElevatedButton.styleFrom(
+                    //         backgroundColor: Colors.teal,
+                    //         foregroundColor: Colors.white,
+                    //         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    //       ),
+                    //       child: const Text('Analyse des Signes', textAlign: TextAlign.center),
+                    //     ),
+                    //     if (_ragResults[11]['query'] != null || _ragResults[11]['answer'] != null)
+                    //       Container(
+                    //         margin: const EdgeInsets.only(top: 6, bottom: 16),
+                    //         padding: const EdgeInsets.all(10),
+                    //         decoration: BoxDecoration(
+                    //           color: Colors.grey[50],
+                    //           borderRadius: BorderRadius.circular(8),
+                    //           border: Border.all(color: Colors.grey[300]!),
+                    //         ),
+                    //         child: Column(
+                    //           crossAxisAlignment: CrossAxisAlignment.start,
+                    //           children: [
+                    //             if (_ragResults[11]['query'] != null) ...[
+                    //               const Text('RAG Query:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                    //               SelectableText(_ragResults[11]['query'] ?? '', style: TextStyle(fontSize: 12, fontFamily: 'monospace')),
+                    //               const SizedBox(height: 6),
+                    //             ],
+                    //             if (_ragResults[11]['answer'] != null) ...[
+                    //               const Text('Réponse IA:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                    //               SelectableText(_ragResults[11]['answer'] ?? '', style: TextStyle(fontSize: 13)),
+                    //             ],
+                    //           ],
+                    //         ),
+                    //       ),
+                    //   ],
+                    // ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 /*
