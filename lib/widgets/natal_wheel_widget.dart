@@ -424,7 +424,7 @@ class NatalWheelPainter extends CustomPainter {
               angleLabel = '';
           }
           
-          final labelRadius = triangleRadius + 25; // Position label further out
+          final labelRadius = triangleRadius + 17; // Position label further out
           final labelCenter = center + Offset(labelRadius * cos(angle), labelRadius * sin(angle));
           
           final textPainter = TextPainter(
@@ -472,16 +472,33 @@ class NatalWheelPainter extends CustomPainter {
       }
     }
 
+    // =============================================================
     // Draw planets with glyphs - outermost
     if (chartData['planets'] is List) {
       final planets = chartData['planets'] as List;
       final planetRadius = radius + 60; // Increased from +40 to +60 (more space from house lines)
 
+      // Overlap detection: track placed planet degrees
+      final List<double> placedDegrees = [];
+      const double minSeparationDeg = 10.0; // Minimum separation in degrees
+      const double radiusStep = 28.0; // How much to offset for each overlap
+
       for (final planet in planets) {
         final deg = (planet['longitude'] ?? planet['full_degree'] ?? 0).toDouble();
         final angle = (-pi) - (deg - ascDegree) * pi / 180; // Rotated base
-        final px = center.dx + planetRadius * cos(angle);
-        final py = center.dy + planetRadius * sin(angle);
+
+        // Count how many previous planets are within minSeparationDeg
+        int overlapCount = 0;
+        for (final prevDeg in placedDegrees) {
+          double diff = (deg - prevDeg).abs();
+          if (diff > 180) diff = 360 - diff;
+          if (diff < minSeparationDeg) overlapCount++;
+        }
+        placedDegrees.add(deg);
+
+        final double thisRadius = planetRadius + overlapCount * radiusStep;
+        final px = center.dx + thisRadius * cos(angle);
+        final py = center.dy + thisRadius * sin(angle);
 
         final planetName = planet['name'] ?? '';
         final shortName = planet['short_name'] ?? '';
@@ -534,24 +551,7 @@ class NatalWheelPainter extends CustomPainter {
           'Balance', 'Scorpion', 'Sagittaire', 'Capricorne', 'Verseau', 'Poissons'
         ];
         final signNameFull = zodiacNamesFull[zodiacSign];
-        // final signPainter = TextPainter(
-        //   text: TextSpan(
-        //     text: signNameFull,
-        //     style: const TextStyle(
-        //       fontSize: 10, 
-        //       color: Colors.black,
-        //       fontWeight: FontWeight.w600,
-        //     ),
-        //   ),
-        //   textDirection: TextDirection.ltr,
-        // )..layout();
-        // signPainter.paint(
-        //   canvas,
-        //   Offset(
-        //     px - signPainter.width / 2 + 15,
-        //     py + glyphPainter.height / 2 + 1, // Just below the glyph
-        //   ),
-        // );
+        // (Optional: draw sign name below glyph as before)
 
         // Draw retrograde indicator "R" if planet is retrograde
         final isRetrograde = planet['is_retrograde'] == true || 
@@ -614,6 +614,7 @@ class NatalWheelPainter extends CustomPainter {
       }
     }
     
+    // =============================================================
     // Draw radial degree lines (normals) from planets to degree ruler
     if (chartData['planets'] is List) {
       final planets = chartData['planets'] as List;
@@ -647,6 +648,7 @@ class NatalWheelPainter extends CustomPainter {
       }
     }
     
+    // =============================================================
     // Draw lines from center to planets
     if(debugDrawLineToPlanet) {
       if (chartData['planets'] is List) {
@@ -671,36 +673,7 @@ class NatalWheelPainter extends CustomPainter {
       }
     }
 
-    // Draw Ascendant and MC labels (fixed positions)
-    // if (chartData['ascendant'] != null) {
-    //   final angle = -pi; // Left (9 o'clock)
-    //   final ax = center.dx + (radius + 50) * cos(angle);
-    //   final ay = center.dy + (radius + 50) * sin(angle);
-
-    //   final textPainter = TextPainter(
-    //     text: const TextSpan(
-    //       text: 'ASC',
-    //       style: TextStyle(fontSize: 14, color: Colors.red, fontWeight: FontWeight.bold),
-    //     ),
-    //     textDirection: TextDirection.ltr,
-    //   )..layout();
-    //   textPainter.paint(canvas, Offset(ax - 12, ay - 12));
-    // }
-    // if (chartData['mc'] != null) {
-    //   final angle = -pi / 2; // Top (12 o'clock)
-    //   final mx = center.dx + (radius + 50) * cos(angle);
-    //   final my = center.dy + (radius + 50) * sin(angle);
-
-    //   final textPainter = TextPainter(
-    //     text: const TextSpan(
-    //       text: 'MC',
-    //       style: TextStyle(fontSize: 14, color: Colors.teal, fontWeight: FontWeight.bold),
-    //     ),
-    //     textDirection: TextDirection.ltr,
-    //   )..layout();
-    //   textPainter.paint(canvas, Offset(mx - 12, my - 12));
-    // }
-
+    // =============================================================
     // Draw the aspects circle (faint circle at aspect radius)
     final aspectRadius = radius - 60;
     canvas.drawCircle(
@@ -754,6 +727,7 @@ class NatalWheelPainter extends CustomPainter {
       }
     }
 
+    // =============================================================
     // Build planetDegrees map
     final planetDegrees = <String, double>{};
     if (chartData['houses'] is List) {
@@ -809,6 +783,7 @@ class NatalWheelPainter extends CustomPainter {
     }
 
 
+    // =============================================================
     // Draw zodiac glyphs between aspects circle and zodiac outer circle
     for (int i = 0; i < 12; i++) {
       // Calculate the middle of each zodiac sign (15° from the start of each sign)
