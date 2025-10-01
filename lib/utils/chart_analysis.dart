@@ -2,6 +2,73 @@ import 'dart:math';
 import 'astrology_utils.dart';
 
 class ChartAnalysis {
+
+  /// Translate a single placement string (e.g., 'Sun: Aries 12°34\'56"') to French
+  static String translatePlacementFR(String placement) {
+    String translatePlanet(String name) {
+      switch (name) {
+        case 'Sun': return 'Soleil';
+        case 'Moon': return 'Lune';
+        case 'Mercury': return 'Mercure';
+        case 'Venus': return 'Vénus';
+        case 'Mars': return 'Mars';
+        case 'Jupiter': return 'Jupiter';
+        case 'Saturn': return 'Saturne';
+        case 'Uranus': return 'Uranus';
+        case 'Neptune': return 'Neptune';
+        case 'Pluto': return 'Pluton';
+        case 'North Node': return 'Nœud Nord';
+        case 'South Node': return 'Nœud Sud';
+        case 'Chiron': return 'Chiron';
+        case 'Lilith': return 'Lilith';
+        case 'Ascendant': return 'Ascendant';
+        case 'Descendant': return 'Descendant';
+        case 'Midheaven': return 'Milieu du Ciel';
+        case 'Imum Coeli': return 'Fond du Ciel';
+        default: return name;
+      }
+    }
+    String translateSign(String sign) {
+      switch (sign) {
+        case 'Aries': return 'Bélier';
+        case 'Taurus': return 'Taureau';
+        case 'Gemini': return 'Gémeaux';
+        case 'Cancer': return 'Cancer';
+        case 'Leo': return 'Lion';
+        case 'Virgo': return 'Vierge';
+        case 'Libra': return 'Balance';
+        case 'Scorpio': return 'Scorpion';
+        case 'Sagittarius': return 'Sagittaire';
+        case 'Capricorn': return 'Capricorne';
+        case 'Aquarius': return 'Verseau';
+        case 'Pisces': return 'Poissons';
+        default: return sign;
+      }
+    }
+    final colonIdx = placement.indexOf(':');
+    if (colonIdx == -1) return placement;
+    final name = placement.substring(0, colonIdx).trim();
+    var rest = placement.substring(colonIdx + 1).trim();
+    final signMatch = RegExp(r'([A-Za-z]+)').firstMatch(rest);
+    final sign = signMatch != null ? signMatch.group(1)! : '';
+    final restAfterSign = signMatch != null ? rest.substring(signMatch.end).trim() : rest;
+    // Special handling for angles with extra info (ruler, mode)
+    if (name == 'Ascendant' || name == 'Descendant' || name == 'Midheaven' || name == 'Imum Coeli') {
+      String extra = '';
+      final match = RegExp(r'\(([^)]+)\)').firstMatch(restAfterSign);
+      if (match != null) {
+        extra = match.group(1)!;
+        extra = extra.replaceAllMapped(RegExp(r'\b([A-Za-z]+)\b'), (m) => translatePlanet(m[1]!));
+      }
+      if (extra.isNotEmpty) {
+        return '${translatePlanet(name)} en ${translateSign(sign)} ($extra)';
+      } else {
+        return '${translatePlanet(name)} en ${translateSign(sign)}';
+      }
+    } else {
+      return '${translatePlanet(name)} en ${translateSign(sign)}';
+    }
+  }
   /// Mapping of zodiac signs to elements
   static const Map<String, String> elements = {
     "Aries": "Fire", "Leo": "Fire", "Sagittarius": "Fire",
@@ -135,12 +202,11 @@ class ChartAnalysis {
         final sign = AstrologyUtils.getZodiacSign(lon);
         final degree = AstrologyUtils.formatDegreeMinute(lon);
         final ruler = rulers[sign];
-        placements.add("$name: $sign $degree (ruler: $ruler)");
+        final mode = modes[sign];
+        placements.add("$name: $sign $degree (ruler: $ruler, mode: $mode)");
       }
     });
 
-
-  // ...existing code...
     return placements;
   }
 
@@ -160,14 +226,30 @@ class ChartAnalysis {
 
 
   static String buildRetrieverQueryFR(List<String> placements) {
-    String? soleil, lune, ascendant;
-    for (final p in placements) {
-      if (p.startsWith('Sun:')) soleil = p.substring(4).trim();
-      if (p.startsWith('Moon:')) lune = p.substring(5).trim();
-      if (p.startsWith('Ascendant:')) ascendant = p.substring(10).trim();
+    // Helper: translate planet/angle names and zodiac signs from English to French
+    String translatePlanet(String name) {
+      switch (name) {
+        case 'Sun': return 'Soleil';
+        case 'Moon': return 'Lune';
+        case 'Mercury': return 'Mercure';
+        case 'Venus': return 'Vénus';
+        case 'Mars': return 'Mars';
+        case 'Jupiter': return 'Jupiter';
+        case 'Saturn': return 'Saturne';
+        case 'Uranus': return 'Uranus';
+        case 'Neptune': return 'Neptune';
+        case 'Pluto': return 'Pluton';
+        case 'North Node': return 'Nœud Nord';
+        case 'South Node': return 'Nœud Sud';
+        case 'Chiron': return 'Chiron';
+        case 'Lilith': return 'Lilith';
+        case 'Ascendant': return 'Ascendant';
+        case 'Descendant': return 'Descendant';
+        case 'Midheaven': return 'Milieu du Ciel';
+        case 'Imum Coeli': return 'Fond du Ciel';
+        default: return name;
+      }
     }
-
-    // Helper: translate zodiac sign from English to French
     String translateSign(String sign) {
       switch (sign) {
         case 'Aries': return 'Bélier';
@@ -187,45 +269,40 @@ class ChartAnalysis {
     }
 
     List<String> parts = [];
-
-    if (soleil != null) {
-      final sign = soleil.split(' ').first; // remove degrees
-      parts.add('Soleil en ${translateSign(sign)}');
-    }
-    if (lune != null) {
-      final sign = lune.split(' ').first;
-      parts.add('Lune en ${translateSign(sign)}');
-    }
-    if (ascendant != null) {
-      final sign = ascendant.split(' ').first;
-      // Optional: include ruler
-      String ascRuler = '';
-      final match = RegExp(r'\(ruler: (.+)\)').firstMatch(ascendant);
-      if (match != null) {
-        ascRuler = match.group(1)!;
-        ascRuler = ascRuler.replaceAllMapped(RegExp(r'\b(\w+)\b'), (m) {
-          switch (m[1]) {
-            case 'Sun': return 'Soleil';
-            case 'Moon': return 'Lune';
-            case 'Mercury': return 'Mercure';
-            case 'Venus': return 'Vénus';
-            case 'Mars': return 'Mars';
-            case 'Jupiter': return 'Jupiter';
-            case 'Saturn': return 'Saturne';
-            case 'Uranus': return 'Uranus';
-            case 'Neptune': return 'Neptune';
-            case 'Pluto': return 'Pluton';
-          }
-          return m[1]!;
-        });
+    for (final p in placements) {
+      // Example: "Sun: Aries 12°34'56""
+      final colonIdx = p.indexOf(':');
+      if (colonIdx == -1) {
+        parts.add(p); // fallback, not a standard placement
+        continue;
       }
-      if (ascRuler.isNotEmpty) {
-        parts.add('Ascendant en ${translateSign(sign)} (maître: $ascRuler)');
+      final name = p.substring(0, colonIdx).trim();
+      var rest = p.substring(colonIdx + 1).trim();
+
+      // Try to extract sign and degree
+      final signMatch = RegExp(r'([A-Za-z]+)').firstMatch(rest);
+      final sign = signMatch != null ? signMatch.group(1)! : '';
+      final restAfterSign = signMatch != null ? rest.substring(signMatch.end).trim() : rest;
+
+      // Special handling for angles with extra info (ruler, mode)
+      if (name == 'Ascendant' || name == 'Descendant' || name == 'Midheaven' || name == 'Imum Coeli') {
+        // Look for (ruler: ...)
+        String extra = '';
+        final match = RegExp(r'\(([^)]+)\)').firstMatch(restAfterSign);
+        if (match != null) {
+          extra = match.group(1)!;
+          // Translate planet names in extra
+          extra = extra.replaceAllMapped(RegExp(r'\b([A-Za-z]+)\b'), (m) => translatePlanet(m[1]!));
+        }
+        if (extra.isNotEmpty) {
+          parts.add('${translatePlanet(name)} en ${translateSign(sign)} ($extra)');
+        } else {
+          parts.add('${translatePlanet(name)} en ${translateSign(sign)}');
+        }
       } else {
-        parts.add('Ascendant en ${translateSign(sign)}');
+        parts.add('${translatePlanet(name)} en ${translateSign(sign)}');
       }
     }
-
     return parts.join('; ');
   }
 

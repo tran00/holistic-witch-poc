@@ -2,6 +2,8 @@
 
 /// Utility class for astrological calculations and formatting
 class AstrologyUtils {
+  /// Alias for getModality for compatibility
+  static String getMode(String sign) => getModality(sign);
   
   /// Get zodiac sign name from longitude
   static String getZodiacSign(double longitude) {

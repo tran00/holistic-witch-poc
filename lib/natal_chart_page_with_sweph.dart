@@ -44,6 +44,9 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
   bool _showPromptEditor = false;
   final TextEditingController _promptController = TextEditingController();
 
+  // Store RAG query and answer for each button
+  List<Map<String, String?>> _ragResults = List.generate(10, (index) => {'query': null, 'answer': null});
+
   // Astrology tone categories (id, name, description, narration)
   final List<Map<String, String>> _astrologyToneCategories = [
     {
@@ -111,10 +114,13 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
   Future<void> _askOpenAIInterpretationCategory(int idx) async {
 
       
+
     if (_chartData == null) return;
     setState(() {
       _isLoadingInterpretation = true;
       _chartInterpretation = null;
+      // Optionally clear previous result for this button
+      _ragResults[idx] = {'query': null, 'answer': null};
     });
 
     try {
@@ -130,8 +136,8 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
       print(narration);
 
       final placements = ChartAnalysis.getPlacements(_chartData!);
-      String placementsString = '';
-      String retrieverQuery = '';
+  String placementsString = '';
+  String retrieverQuery = '';
 
       // final planet = 
 
@@ -148,22 +154,99 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
 
         placementsString = '$sun\n$moon\n$asc ?';
 
-        retrieverQuery = 'Que signifie ${ChartAnalysis.buildRetrieverQueryFR(placements)} en astrologie ?';
+      } else if (idx == 2) {
 
+        final asc = placements.firstWhere((p) => p.startsWith("Ascendant"), orElse: () => '');
+        final desc = placements.firstWhere((p) => p.startsWith("Descendant"), orElse: () => '');
+        final mc = placements.firstWhere((p) => p.startsWith("Midheaven"), orElse: () => '');
+        final ic = placements.firstWhere((p) => p.startsWith("Imum Coeli"), orElse: () => '');
+
+        placementsString = '$asc\n$desc\n$mc\n$ic ?';
+
+      } else if (idx == 3) {
+        // Elements & Modes
+        final elementCounts = <String, int>{'Fire': 0, 'Earth': 0, 'Air': 0, 'Water': 0};
+        final modeCounts = <String, int>{'Cardinal': 0, 'Fixed': 0, 'Mutable': 0};
+
+        for (final placement in placements) {
+          final parts = placement.split(':');
+          if (parts.length < 2) continue;
+          final details = parts[1].trim().split(' ');
+          if (details.isEmpty) continue;
+          final sign = details[0];
+          final element = AstrologyUtils.getElement(sign);
+          final mode = AstrologyUtils.getMode(sign);
+          if (element != 'Unknown') {
+            elementCounts[element] = (elementCounts[element] ?? 0) + 1;
+          }
+          if (mode != 'Unknown') {
+            modeCounts[mode] = (modeCounts[mode] ?? 0) + 1;
+          }
+        }
+
+        final dominantElement = elementCounts.entries.reduce((a, b) => a.value >= b.value ? a : b).key;
+        final dominantMode = modeCounts.entries.reduce((a, b) => a.value >= b.value ? a : b).key;
+
+        placementsString = 'Dominant Element: $dominantElement\nDominant Mode: $dominantMode';
+      } else if (idx == 4) {
+        // Personal planets
+        final personalPlanets = ['Mercury', 'Venus', 'Mars'];
+        final personalPlacements = placements.where((p) {
+          for (final planet in personalPlanets) {
+            if (p.startsWith(planet)) return true;
+          }
+          return false;
+        }).toList();
+        placementsString = personalPlacements.join('\n');
+      } else if (idx == 5) {
+        // Social planets
+        final socialPlanets = ['Jupiter', 'Saturn'];
+        final socialPlacements = placements.where((p) {
+          for (final planet in socialPlanets) {
+            if (p.startsWith(planet)) return true;
+          }
+          return false;
+        }).toList();
+        placementsString = socialPlacements.join('\n');
+      } else if (idx == 6) {
+        // Transpersonal planets
+        final transpersonalPlanets = ['Uranus', 'Neptune', 'Pluto'];
+        final transpersonalPlacements = placements.where((p) {
+          for (final planet in transpersonalPlanets) {
+            if (p.startsWith(planet)) return true;
+          }
+          return false;
+        }).toList();
+        placementsString = transpersonalPlacements.join('\n');
+      } else if (idx == 7) {
+        // Karmic messengers
+        final karmicBodies = ['North Node', 'South Node', 'Chiron', 'Lilith'];
+        final karmicPlacements = placements.where((p) {
+          for (final body in karmicBodies) {
+            if (p.startsWith(body)) return true;
+          }
+          return false;
+        }).toList();
+        placementsString = karmicPlacements.join('\n');
+      } else if (idx == 8) {
+        // Aspects
+        final aspects = ChartAnalysis.calculateAspects(_chartData!);
+        placementsString = aspects.join('\n');
 
       } else if (idx == 9) {
         // Phase lunaire
-        // final moon = _chartData!["planets"].firstWhere((p) => p["name"] == "Moon");
-        // final sun = _chartData!["planets"].firstWhere((p) => p["name"] == "Sun");
-        // final phase = ChartAnalysis.getMoonPhase(sun["full_degree"], moon["full_degree"]);
-        // placements['Phase lunaire'] = phase;
+        final phase = ChartAnalysis.getMoonPhase(_chartData!);
+        placements.add('Phase lunaire: $phase');
 
-        // // Eclipse proche
-        // final isEclipse = ChartAnalysis.isNearEclipse(_chartData!);
-        // placements['Éclipse proche'] = isEclipse ? 'Oui' : 'Non';
+        // Eclipse proche
+        final isEclipse = ChartAnalysis.isNearEclipse(_chartData!);
+        placements.add('Éclipse proche: ${isEclipse ? 'Oui' : 'Non'}');
       } else {
         placementsString = placements.join('\n');
       }
+
+        retrieverQuery = 'Que signifie ${ChartAnalysis.translatePlacementFR(placementsString)} en astrologie ?';
+
 
     // final prompt =
     //   'You are an astrologer who always answers in a poetic and symbolic tone. \nUse the retrieved texts if available. If nothing is retrieved, use your own astrological knowledge.\n Follow this structure: :\n Narration: ${narration}\n Thème : ${cat['name'] ?? ''} and ${cat['description'] ?? ''}\nPlacement :\n$placementsString\n Retrieved texts:';
@@ -183,6 +266,8 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
       setState(() {
         _chartPrompt = prompt;
         _promptController.text = prompt;
+        // Show the query immediately (answer will be set after await)
+        _ragResults[idx]['query'] = retrieverQuery;
       });
       final answer = await ragService.askQuestion(retrieverQuery, systemPrompt: prompt);
       final responseText = answer['answer'] ?? '';
@@ -190,6 +275,7 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
       if (mounted) {
         setState(() {
           _chartInterpretation = responseText;
+          _ragResults[idx]['answer'] = responseText;
         });
       }
     } catch (e) {
@@ -597,24 +683,55 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
                 NatalWheel(chartData: _chartData!),
                 
                 const SizedBox(height: 20),
+                // Show each button with its query/answer below
                 Wrap(
                   alignment: WrapAlignment.center,
                   spacing: 8,
                   runSpacing: 8,
                   children: List.generate(_astrologyToneCategories.length, (idx) {
                     final cat = _astrologyToneCategories[idx];
-                    return ElevatedButton(
-                      onPressed: _isLoadingInterpretation ? null : () => _askOpenAIInterpretationCategory(idx),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.deepPurple,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      ),
-                      child: Text(cat['name']!.isNotEmpty ? cat['name']! : 'Synthèse', textAlign: TextAlign.center),
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ElevatedButton(
+                          onPressed: _isLoadingInterpretation ? null : () => _askOpenAIInterpretationCategory(idx),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.deepPurple,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          ),
+                          child: Text(cat['name']!.isNotEmpty ? cat['name']! : 'Synthèse', textAlign: TextAlign.center),
+                        ),
+                        if (_ragResults[idx]['query'] != null || _ragResults[idx]['answer'] != null)
+                          Container(
+                            margin: const EdgeInsets.only(top: 6, bottom: 16),
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[50],
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey[300]!),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (_ragResults[idx]['query'] != null) ...[
+                                  const Text('RAG Query:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                  SelectableText(_ragResults[idx]['query'] ?? '', style: TextStyle(fontSize: 12, fontFamily: 'monospace')),
+                                  const SizedBox(height: 6),
+                                ],
+                                if (_ragResults[idx]['answer'] != null) ...[
+                                  const Text('Réponse IA:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                  SelectableText(_ragResults[idx]['answer'] ?? '', style: TextStyle(fontSize: 13)),
+                                ],
+                              ],
+                            ),
+                          ),
+                      ],
                     );
                   })
                 ),
                 const SizedBox(height: 12),
+                /*
                 ElevatedButton.icon(
                   onPressed: () {
                     setState(() {
@@ -628,7 +745,8 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
                     foregroundColor: Colors.white,
                   ),
                 ),
-
+                */
+                /*
                 // Prompt editor section
                 if (_showPromptEditor) ...[
                   const SizedBox(height: 20),
@@ -704,7 +822,9 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
                     ),
                   ),
                 ],
+                */
 
+                /*
                 // Display prompt used
                 if (_chartPrompt != null) ...[
                   const SizedBox(height: 20),
@@ -751,7 +871,9 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
                     ),
                   ),
                 ],
+                */
 
+                /*
                 // Display interpretation
                 if (_chartInterpretation != null) ...[
                   const SizedBox(height: 20),
@@ -788,7 +910,7 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
                       ],
                     ),
                   ),
-                ],
+                ], */
               ],
             ],
           ),
