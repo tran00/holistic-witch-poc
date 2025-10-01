@@ -486,19 +486,12 @@ class NatalWheelPainter extends CustomPainter {
         final planetName = planet['name'] ?? '';
         final shortName = planet['short_name'] ?? '';
 
-        // print('🪐 Drawing planet: $planetName at ${deg}° (short: "$shortName")');
-
         // Try multiple ways to find the glyph
         String glyph = planetGlyphs[planetName] ?? 
                        planetGlyphs[shortName] ?? 
                        planetGlyphs[planetName.toUpperCase()] ??
                        planetGlyphs[shortName.toUpperCase()] ??
                        '?'; // Debug fallback
-
-        // Debug: Print if glyph not found
-        if (glyph == '?') {
-          print('⚠️ No glyph found for planet: "$planetName" (short: "$shortName")');
-        }
 
         // Special styling for nodes
         Color glyphColor = Colors.black;
@@ -509,13 +502,11 @@ class NatalWheelPainter extends CustomPainter {
             shortName.toLowerCase().contains('n')) {
           glyphColor = Colors.indigo;
           fontSize = 30;
-          // print('🔵 Drawing node: $planetName with glyph: $glyph');
         } else if (planetName.toLowerCase() == 'chiron' || shortName.toLowerCase() == 'ch') {
           glyphColor = Colors.teal;
-          // print('🟢 Drawing Chiron: $planetName with glyph: $glyph');
         }
 
-        // Draw planet glyph with special styling
+        // Draw planet glyph
         final glyphPainter = TextPainter(
           text: TextSpan(
             text: glyph,
@@ -527,8 +518,6 @@ class NatalWheelPainter extends CustomPainter {
           ),
           textDirection: TextDirection.ltr,
         )..layout();
-        
-        // Center the glyph
         glyphPainter.paint(
           canvas, 
           Offset(
@@ -537,58 +526,69 @@ class NatalWheelPainter extends CustomPainter {
           ),
         );
 
+        // Draw zodiac sign name under the planet glyph
+        final rawDegrees = deg;
+        final zodiacSign = (rawDegrees / 30).floor().clamp(0, 11);
+        const zodiacNamesFull = [
+          'Bélier', 'Taureau', 'Gémeaux', 'Cancer', 'Lion', 'Vierge',
+          'Balance', 'Scorpion', 'Sagittaire', 'Capricorne', 'Verseau', 'Poissons'
+        ];
+        final signNameFull = zodiacNamesFull[zodiacSign];
+        // final signPainter = TextPainter(
+        //   text: TextSpan(
+        //     text: signNameFull,
+        //     style: const TextStyle(
+        //       fontSize: 10, 
+        //       color: Colors.black,
+        //       fontWeight: FontWeight.w600,
+        //     ),
+        //   ),
+        //   textDirection: TextDirection.ltr,
+        // )..layout();
+        // signPainter.paint(
+        //   canvas,
+        //   Offset(
+        //     px - signPainter.width / 2 + 15,
+        //     py + glyphPainter.height / 2 + 1, // Just below the glyph
+        //   ),
+        // );
+
         // Draw retrograde indicator "R" if planet is retrograde
         final isRetrograde = planet['is_retrograde'] == true || 
                             planet['retrograde'] == true ||
                             (planet['speed'] != null && (planet['speed'] as num) < 0);
-        
-        // Only print debug info for retrograde planets
-        // if (isRetrograde) {
-        //   print('🌟 RETROGRADE DETECTED: $planetName (speed: ${planet['speed']})');
-        // }
-        
-        // Use real retrograde data now
         if (isRetrograde) {
           final retroPainter = TextPainter(
             text: const TextSpan(
               text: 'R',
               style: TextStyle(
-                fontSize: 12,  // Made bigger for visibility
+                fontSize: 12,
                 color: Colors.red,
                 fontWeight: FontWeight.bold,
               ),
             ),
             textDirection: TextDirection.ltr,
           )..layout();
-          
-          // Position "R" at the bottom-left of the planet glyph
           retroPainter.paint(
             canvas,
             Offset(
-              px - glyphPainter.width / 2 + 15,     // To the left of the glyph
-              py + glyphPainter.height / 2 - 15,    // Below the glyph
+              px - glyphPainter.width / 2 + 15,
+              py + glyphPainter.height / 2 - 15,
             ),
           );
-          
-          // print('🔴 Drew retrograde R for $planetName at position ($px, $py)');
         }
 
-        // Calculate zodiac degrees and minutes (UPDATED - same as working version)
-        final rawDegrees = deg;
-        final zodiacSign = (rawDegrees / 30).floor().clamp(0, 11);
+        // Calculate zodiac degrees and minutes (for degree label)
         final degreesInSign = rawDegrees % 30;
         final degrees = degreesInSign.floor();
         final minutes = ((degreesInSign - degrees) * 60).round();
-
         const zodiacNames = [
           'Ari', 'Tau', 'Gem', 'Can', 'Leo', 'Vir',
           'Lib', 'Sco', 'Sag', 'Cap', 'Aqu', 'Pis'
         ];
-        final signName = zodiacNames[zodiacSign];
-
-        // Create readable degree text with zodiac sign
+        // final signName = zodiacNames[zodiacSign];
+        final signName = zodiacNamesFull[zodiacSign];
         final degreeText = '$degrees°${minutes.toString().padLeft(2, '0')}\' $signName';
-        
         final degreePainter = TextPainter(
           text: TextSpan(
             text: degreeText,
@@ -600,18 +600,13 @@ class NatalWheelPainter extends CustomPainter {
           ),
           textDirection: TextDirection.ltr,
         )..layout();
-        
         // Determine if planet is on left side of wheel (6 o'clock to 12 o'clock)
-        // Convert angle to 0-2π range and check if it's in the left half
         final normalizedAngle = (angle + 2 * pi) % (2 * pi);
         final isOnLeftSide = normalizedAngle > pi / 2 && normalizedAngle < 3 * pi / 2;
-        
-        // Position text on left or right side based on position
         final textOffsetX = isOnLeftSide 
-            ? px - glyphPainter.width / 2 - degreePainter.width - 4  // Left side of glyph
-            : px + glyphPainter.width / 2 + 4;  // Right side of glyph
-        final textOffsetY = py - degreePainter.height / 2; // Vertically centered
-        
+            ? px - glyphPainter.width / 2 - degreePainter.width - 4
+            : px + glyphPainter.width / 2 + 4;
+        final textOffsetY = py - degreePainter.height / 2;
         degreePainter.paint(
           canvas,
           Offset(textOffsetX, textOffsetY),
