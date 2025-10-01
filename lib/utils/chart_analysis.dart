@@ -3,6 +3,8 @@ import 'astrology_utils.dart';
 
 class ChartAnalysis {
 
+
+
   /// Translate a single placement string (e.g., 'Sun: Aries 12°34\'56"') to French
   static String translatePlacementFR(String placement) {
     String translatePlanet(String name) {

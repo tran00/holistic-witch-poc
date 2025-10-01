@@ -652,9 +652,23 @@ class NatalWheelPainter extends CustomPainter {
 
         // Draw a line from the end of the radial line to the label if offset
         if (groupSize > 1 && (px != basePx || py != basePy)) {
+          Offset start = Offset(basePx, basePy);
+          Offset end = Offset(px, py);
+          // If this is the center planet in a group of 3+, make the line much longer
+          if (groupSize >= 3 && groupIndex == (groupSize ~/ 2)) {
+            // Extend the line by double the extra radius for clear visual effect
+            double extra = 48.0;
+            double dx = end.dx - start.dx;
+            double dy = end.dy - start.dy;
+            double len = sqrt(dx*dx + dy*dy);
+            if (len > 0) {
+              double scale = (len + extra) / len;
+              end = Offset(start.dx + dx * scale, start.dy + dy * scale);
+            }
+          }
           canvas.drawLine(
-            Offset(basePx, basePy),
-            Offset(px, py),
+            start,
+            end,
             Paint()
               ..color = Colors.grey.withOpacity(0.7)
               ..strokeWidth = 1.5,

@@ -258,7 +258,7 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
         final moon = placements.firstWhere((p) => p.startsWith("Moon"));
         final asc = placements.firstWhere((p) => p.startsWith("Ascendant"), orElse: () => '');
 
-        placementsString = '$sun\n$moon\n$asc ?';
+        placementsString = ChartAnalysis.translatePlacementFR(sun) + '\n' + ChartAnalysis.translatePlacementFR(moon) + '\n' + ChartAnalysis.translatePlacementFR(asc);
 
       } else if (idx == 2) {
 
@@ -267,7 +267,11 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
         final mc = placements.firstWhere((p) => p.startsWith("Midheaven"), orElse: () => '');
         final ic = placements.firstWhere((p) => p.startsWith("Imum Coeli"), orElse: () => '');
 
-        placementsString = '$asc\n$desc\n$mc\n$ic ?';
+        placementsString = 
+          ChartAnalysis.translatePlacementFR(asc) + '\n' + 
+          ChartAnalysis.translatePlacementFR(desc) + '\n' + 
+          ChartAnalysis.translatePlacementFR(mc) + '\n' + 
+          ChartAnalysis.translatePlacementFR(ic);
 
       } else if (idx == 3) {
         // Elements & Modes
@@ -293,7 +297,9 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
         final dominantElement = elementCounts.entries.reduce((a, b) => a.value >= b.value ? a : b).key;
         final dominantMode = modeCounts.entries.reduce((a, b) => a.value >= b.value ? a : b).key;
 
-        placementsString = 'Dominant Element: $dominantElement\nDominant Mode: $dominantMode';
+        placementsString = 'Dominant Element: ' + ChartAnalysis.translatePlacementFR(dominantElement) + '\n' +
+                           'Dominant Mode: ' + ChartAnalysis.translatePlacementFR(dominantMode);
+
       } else if (idx == 4) {
         // Personal planets
         final personalPlanets = ['Mercury', 'Venus', 'Mars'];
@@ -303,7 +309,11 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
           }
           return false;
         }).toList();
-        placementsString = personalPlacements.join('\n');
+        
+        placementsString = personalPlacements
+          .map((str) => ChartAnalysis.translatePlacementFR(str))
+          .join('\n');
+
       } else if (idx == 5) {
         // Social planets
         final socialPlanets = ['Jupiter', 'Saturn'];
@@ -313,7 +323,11 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
           }
           return false;
         }).toList();
-        placementsString = socialPlacements.join('\n');
+
+        placementsString = socialPlacements
+          .map((str) => ChartAnalysis.translatePlacementFR(str))
+          .join('\n');
+
       } else if (idx == 6) {
         // Transpersonal planets
         final transpersonalPlanets = ['Uranus', 'Neptune', 'Pluto'];
@@ -323,7 +337,11 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
           }
           return false;
         }).toList();
-        placementsString = transpersonalPlacements.join('\n');
+
+        placementsString = transpersonalPlacements
+          .map((str) => ChartAnalysis.translatePlacementFR(str))
+          .join('\n');
+          
       } else if (idx == 7) {
         // Karmic messengers
         final karmicBodies = ['North Node', 'South Node', 'Chiron', 'Lilith'];
@@ -333,11 +351,19 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
           }
           return false;
         }).toList();
-        placementsString = karmicPlacements.join('\n');
+
+        placementsString = karmicPlacements
+          .map((str) => ChartAnalysis.translatePlacementFR(str))
+          .join('\n');
+
       } else if (idx == 8) {
         // Aspects
         final aspects = ChartAnalysis.calculateAspects(_chartData!);
-        placementsString = aspects.join('\n');
+
+        placementsString = aspects
+          .map((str) => ChartAnalysis.translatePlacementFR(str))
+          .join('\n');
+          
 
       } else if (idx == 9) {
         // Phase lunaire
@@ -347,11 +373,16 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
         // Eclipse proche
         final isEclipse = ChartAnalysis.isNearEclipse(_chartData!);
         placements.add('Éclipse proche: ${isEclipse ? 'Oui' : 'Non'}');
+
+        placementsString = placements
+          .map((str) => ChartAnalysis.translatePlacementFR(str))
+          .join('\n');
+
       } else {
         placementsString = placements.join('\n');
       }
 
-        retrieverQuery = 'Que signifie ${ChartAnalysis.translatePlacementFR(placementsString)} en astrologie ?';
+      retrieverQuery = 'Que signifie $placementsString en astrologie ?';
 
 
     // final prompt =
