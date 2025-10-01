@@ -208,7 +208,7 @@ class NatalWheelPainter extends CustomPainter {
     }
     
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = min(size.width, size.height) / 2 - 100; // Reduced from -66 to -100 (smaller chart)
+    final radius = min(size.width, size.height) / 2 - 120; // Reduced from -66 to -100 (smaller chart)
 
     // Draw outer circle for houses
     final outerCirclePaint = Paint()
@@ -478,27 +478,65 @@ class NatalWheelPainter extends CustomPainter {
       final planets = chartData['planets'] as List;
       final planetRadius = radius + 60; // Increased from +40 to +60 (more space from house lines)
 
-      // Overlap detection: track placed planet degrees
-      final List<double> placedDegrees = [];
-      const double minSeparationDeg = 10.0; // Minimum separation in degrees
-      const double radiusStep = 28.0; // How much to offset for each overlap
-
-      for (final planet in planets) {
+      // Improved overlap logic: group planets by proximity, keep center one unchanged if three overlap
+      const double minSeparationDeg = 10.0;
+      const double horizontalOffset = 32.0;
+      // Build groups of overlapping planets
+      List<List<int>> overlapGroups = [];
+      for (int i = 0; i < planets.length; i++) {
+        final deg = (planets[i]['longitude'] ?? planets[i]['full_degree'] ?? 0).toDouble();
+        bool added = false;
+        for (final group in overlapGroups) {
+          for (final idx in group) {
+            double prevDeg = (planets[idx]['longitude'] ?? planets[idx]['full_degree'] ?? 0).toDouble();
+            double diff = (deg - prevDeg).abs();
+            if (diff > 180) diff = 360 - diff;
+            if (diff < minSeparationDeg) {
+              group.add(i);
+              added = true;
+              break;
+            }
+          }
+          if (added) break;
+        }
+        if (!added) overlapGroups.add([i]);
+      }
+      // For each planet, determine its offset index in its group
+      Map<int, int> planetToGroup = {};
+      Map<int, int> planetToGroupIndex = {};
+      for (int g = 0; g < overlapGroups.length; g++) {
+        final group = overlapGroups[g];
+        for (int i = 0; i < group.length; i++) {
+          planetToGroup[group[i]] = g;
+          planetToGroupIndex[group[i]] = i;
+        }
+      }
+      for (int i = 0; i < planets.length; i++) {
+        final planet = planets[i];
         final deg = (planet['longitude'] ?? planet['full_degree'] ?? 0).toDouble();
         final angle = (-pi) - (deg - ascDegree) * pi / 180; // Rotated base
-
-        // Count how many previous planets are within minSeparationDeg
-        int overlapCount = 0;
-        for (final prevDeg in placedDegrees) {
-          double diff = (deg - prevDeg).abs();
-          if (diff > 180) diff = 360 - diff;
-          if (diff < minSeparationDeg) overlapCount++;
+        // Find overlap group and index
+        int group = planetToGroup[i] ?? 0;
+        int groupIndex = planetToGroupIndex[i] ?? 0;
+        int groupSize = overlapGroups[group].length;
+        // Calculate base position
+        double thisRadius = planetRadius;
+        // If 3 or more overlap, increase radius for the center one
+        if (groupSize >= 3 && groupIndex == (groupSize ~/ 2)) {
+          thisRadius += 24.0; // Increase radius for center one
         }
-        placedDegrees.add(deg);
-
-        final double thisRadius = planetRadius + overlapCount * radiusStep;
-        final px = center.dx + thisRadius * cos(angle);
-        final py = center.dy + thisRadius * sin(angle);
+        final basePx = center.dx + thisRadius * cos(angle);
+        final basePy = center.dy + thisRadius * sin(angle);
+        // If overlap, offset horizontally (perpendicular to radius)
+        double px = basePx;
+        double py = basePy;
+        if (groupSize > 1) {
+          // For 2: [-1, +1], for 3: [-1, 0, +1], for 4: [-1.5, -0.5, +0.5, +1.5], etc.
+          double offsetIndex = groupIndex - (groupSize - 1) / 2.0;
+          double perpAngle = angle + pi / 2;
+          px += offsetIndex * horizontalOffset * cos(perpAngle);
+          py += offsetIndex * horizontalOffset * sin(perpAngle);
+        }
 
         final planetName = planet['name'] ?? '';
         final shortName = planet['short_name'] ?? '';
@@ -611,6 +649,17 @@ class NatalWheelPainter extends CustomPainter {
           canvas,
           Offset(textOffsetX, textOffsetY),
         );
+
+        // Draw a line from the end of the radial line to the label if offset
+        if (groupSize > 1 && (px != basePx || py != basePy)) {
+          canvas.drawLine(
+            Offset(basePx, basePy),
+            Offset(px, py),
+            Paint()
+              ..color = Colors.grey.withOpacity(0.7)
+              ..strokeWidth = 1.5,
+          );
+        }
       }
     }
     
