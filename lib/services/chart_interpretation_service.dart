@@ -106,20 +106,23 @@ Sois précis, bienveillant et constructif dans ton analyse.
   }
 
   /// Ask a specific astrological question using RAG
-  Future<Map<String, dynamic>> askAstrologicalQuestion(String question) async {
+  Future<Map<String, dynamic>> askAstrologicalQuestion(String retrieverQuery, String finalSystemPrompt ) async {
     if (_ragService == null) {
       throw Exception('RAG service not available');
     }
 
+    if(finalSystemPrompt == null) {
+      finalSystemPrompt = '''Tu es un astrologue expert avec accès à une vaste base de connaissances. 
+      Réponds aux questions astrologiques en utilisant les informations contextuelles disponibles.
+      Cite tes sources quand c'est pertinent et sois précis dans tes explications.
+      ''';
+          }
+
     return await _ragService.askQuestion(
-      question,
+      retrieverQuery,
       topK: 8,
       scoreThreshold: 0.5, // Lowered from 0.7 to capture more relevant matches
-      systemPrompt: '''
-Tu es un astrologue expert avec accès à une vaste base de connaissances. 
-Réponds aux questions astrologiques en utilisant les informations contextuelles disponibles.
-Cite tes sources quand c'est pertinent et sois précis dans tes explications.
-''',
+      systemPrompt: finalSystemPrompt,
       contextFilter: 'astronomie',
     );
   }

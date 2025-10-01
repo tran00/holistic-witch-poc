@@ -1,0 +1,67 @@
+{
+  "0": {
+    "type": "introduction",
+    "name": "Ouverture — Le Souffle de l\'Âme",
+    "description": "Ton thème natal est une carte vivante. Un organisme vibrant où chaque planète, chaque signe, chaque maison est un organe relié aux autres. Rien n’est figé : tout respire, tout dialogue. Ici, il ne s’agit pas de prédire, mais de révéler le chant secret de ton âme."
+  },
+    "1": {
+        "type": "soleil-lune",
+        "name": "La Triade Vitale",
+        "description": "Soleil → Ta lumière créatrice : ton chemin de rayonnement, ce que tu es appelé·e à incarner avec constance. • Lune → Tes marées intérieures : ton univers émotionnel, la mémoire intime qui te berce. • Ascendant (+ son maître) → Ta porte d’entrée dans le monde : la vibration que les autres ressentent en premier.",
+        "narration": "Ton Soleil en [Signe] éclaire la voie de ton accomplissement. Ta Lune en [Signe] révèle la couleur de ton monde intérieur, ce dont ton cœur a besoin pour se sentir en sécurité. Ton Ascendant en [Signe] est le seuil par lequel tu t’offres au monde, la première note de ta mélodie incarnée."
+    },
+    "2": {
+        "type": "axes majeurs",
+        "name": "Les Axes de l’Être",
+        "description": "Ascendant / Descendant → relation entre soi et l’autre. Fond du Ciel / Milieu du Ciel → racines et vocation.",
+        "narration": "TTon axe Ascendant–Descendant trace la danse entre ton individualité et tes relations. Ton axe Fond du Ciel–Milieu du Ciel est la respiration entre tes racines intimes et ton horizon de réalisation. Ensemble, ces lignes forment la croix de ton être : elles relient l’intime et le monde, le je et le nous."
+    },
+    "3": {
+        "type": "éléments et mdes",
+        "name": "Les Climats de l’Âme — Éléments & Modes",
+        "description": "Éléments (Feu, Terre, Air, Eau) → ton atmosphère énergétique. Modes (Cardinal, Fixe, Mutable) → ta manière d’avancer dans la vie.",
+        "narration": "Ton ciel est habité par une dominante de [Élément]. Cela signifie que tu avances avant tout par [fonction de l’élément]. Ton mode [Cardinal/Fixe/Mutable] révèle que tu as une manière [initier / stabiliser / transformer] ton chemin. Ce climat est le souffle général qui nourrit toutes tes planètes. "
+    },
+    "4": {
+        "type": "planètes personnelles",
+        "name": "Les Planètes Personnelles — Ta voix intime",
+        "description": "Mercure : ta pensée, ton langage. Vénus : ton amour, tes désirs, ta beauté. Mars : ton feu, ton action, ta force vitale.",
+        "narration": "Mercure en [Signe/Maison] révèle comment ton esprit dialogue avec le monde. Vénus en [Signe/Maison] raconte ta manière d’aimer, de créer, de savourer la beauté. Mars en [Signe/Maison] montre comment ton feu intérieur se met en mouvement, là où tu poses tes actes et affirmes ta volonté."
+    },
+    "5": {
+        "type": "planètes sociales",
+        "name": "Les Planètes Sociales — Ton chemin de croissance",
+        "description": "Jupiter : expansion, confiance, abondance. Saturne : structure, responsabilité, maturité.",
+        "narration": "Jupiter t’ouvre les horizons de [Maison/Signe] : c’est là que tu apprends à grandir avec confiance. Saturne, lui, t’enseigne la patience et la solidité dans [Maison/Signe]. Ensemble, ils sculptent l’équilibre entre ton désir d’expansion et ta capacité à bâtir sur du solide."
+    },
+    "6": {
+        "type": "planètes transpersonnelles",
+        "name": "Les Transpersonnelles — Les vents de l’époque",
+        "description": "Uranus : liberté, innovation, rébellion. Neptune : intuition, rêve, compassion. Pluton : transformation, régénération, renaissance.",
+        "narration": "Uranus éveille en toi la nécessité de briser les chaînes dans [Maison/Signe]. Neptune t’invite à écouter le mystère et à t’abandonner à ton intuition en [Maison/Signe]. Pluton, lui, te conduit aux profondeurs pour renaître transformé·e à travers [Maison/Signe]."
+    },
+    "7": {
+        "type": "messagers karmiques",
+        "name": "Les Messagers Karmiques",
+        "description": "Nœud Nord : direction évolutive. Nœud Sud : mémoire, acquis. Chiron : blessure sacrée → guérison. Lilith : vérité sauvage, part indomptée.",
+        "narration": "Ton Nœud Nord en [Signe/Maison] est l’appel de ton âme vers ton futur. Ton Nœud Sud en [Signe/Maison] porte les mémoires et les dons hérités, mais qu’il te faut dépasser. Chiron révèle ta blessure initiatique qui devient sagesse. Lilith dévoile ta vérité nue, la part sauvage de ton être qui refuse le compromis."
+    },
+    "8": {
+        "type": "aspect",
+        "name": "Les Dialogues du Ciel — Aspects",
+        "description": "Chaque aspect est un chant vibratoire : Conjonction → fusion. Opposition → miroir. Carré → défi initiatique. Trigone → grâce. Sextile → opportunité subtile.",
+        "narration": "Entre [Planète] et [Planète], il existe une [conjonction/carré/opposition...]. C’est un dialogue qui t’invite à [intégration] : parfois tension, parfois harmonie, mais toujours porteur de croissance."
+    },
+    "9": {
+        "type": "cycles",
+        "name": "Les Cycles — Lune & Éclipses",
+        "description": "Phase lunaire natale : ton rythme émotionnel profond. Éclipses proches de ta naissance : portails karmiques, points de bascule.",
+        "narration": "Tu es né·e sous une [phase lunaire] : ton énergie émotionnelle se vit comme [explication]. Si une éclipse a marqué ta naissance, elle t’invite à vivre des transformations intenses dans [Maison/Signe], comme une porte cosmique inscrite en toi."
+    },
+    "10": {
+        "type": "synthèse",
+        "name": "",
+        "description": "",
+        "narration": "Ton thème natal est un organisme vivant. Il respire par ta Triade (Soleil–Lune–Ascendant), il danse par ses axes, il se nourrit de ses éléments. Il te propose trois gestes simples : [verbe 1], [verbe 2], [verbe 3]. Pour incarner cette guidance, choisis un rituel d’intégration : [rituel concret et poétique]."
+    },
+}

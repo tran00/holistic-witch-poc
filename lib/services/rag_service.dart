@@ -544,10 +544,9 @@ class RagService {
       print('🤖 Context length: ${context.length} characters');
 
       final defaultSystemPrompt = '''
-Tu es un assistant IA spécialisé en astrologie et spiritualité. Utilise les informations contextuelles fournies pour répondre à la question de l'utilisateur de manière précise et pertinente.
-
-Si les informations contextuelles ne contiennent pas assez d'éléments pour répondre à la question, dis-le clairement et propose des suggestions alternatives.
-''';
+      Tu es un assistant IA spécialisé en astrologie et spiritualité. Utilise les informations contextuelles fournies pour répondre à la question de l'utilisateur de manière précise et pertinente.
+      Si les informations contextuelles ne contiennent pas assez d'éléments pour répondre à la question, dis-le clairement et propose des suggestions alternatives.
+      ''';
 
       final finalSystemPrompt = systemPrompt ?? defaultSystemPrompt;
       print('🤖 System prompt length: ${finalSystemPrompt.length} characters');

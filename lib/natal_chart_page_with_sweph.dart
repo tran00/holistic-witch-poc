@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:poc/rag_service_singleton.dart';
 import 'package:sweph/sweph.dart';
 import 'widgets/app_drawer.dart';
 import 'widgets/natal_wheel_widget.dart';
@@ -7,11 +8,11 @@ import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'openai_client.dart'; 
 import 'services/geocoding_service.dart';
-import 'services/astrology_calculation_service.dart';
 import 'services/unified_astrology_service.dart';
 import 'services/chart_interpretation_service.dart';
 import 'services/rag_service.dart';
 import 'utils/astrology_utils.dart';
+import 'utils/chart_analysis.dart';
 
 class NatalChartPageWithSweph extends StatefulWidget {
   const NatalChartPageWithSweph({super.key});
@@ -42,6 +43,169 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
   String? _chartPrompt;
   bool _showPromptEditor = false;
   final TextEditingController _promptController = TextEditingController();
+
+  // Astrology tone categories (id, name, description, narration)
+  final List<Map<String, String>> _astrologyToneCategories = [
+    {
+      'id': '0',
+      'name': "Ouverture — Le Souffle de l'Âme",
+      'description': "Ton thème natal est une carte vivante. Un organisme vibrant où chaque planète, chaque signe, chaque maison est un organe relié aux autres. Rien n’est figé : tout respire, tout dialogue. Ici, il ne s’agit pas de prédire, mais de révéler le chant secret de ton âme.",
+      'narration': ''
+    },
+    {
+      'id': '1',
+      'name': "La Triade Vitale",
+      'description': "Soleil → Ta lumière créatrice : ton chemin de rayonnement, ce que tu es appelé·e à incarner avec constance. • Lune → Tes marées intérieures : ton univers émotionnel, la mémoire intime qui te berce. • Ascendant (+ son maître) → Ta porte d’entrée dans le monde : la vibration que les autres ressentent en premier.",
+      'narration': "Ton Soleil en [Signe] éclaire la voie de ton accomplissement. Ta Lune en [Signe] révèle la couleur de ton monde intérieur, ce dont ton cœur a besoin pour se sentir en sécurité. Ton Ascendant en [Signe] est le seuil par lequel tu t’offres au monde, la première note de ta mélodie incarnée."
+    },
+    {
+      'id': '2',
+      'name': "Les Axes de l’Être",
+      'description': "Ascendant / Descendant → relation entre soi et l’autre. Fond du Ciel / Milieu du Ciel → racines et vocation.",
+      'narration': "TTon axe Ascendant–Descendant trace la danse entre ton individualité et tes relations. Ton axe Fond du Ciel–Milieu du Ciel est la respiration entre tes racines intimes et ton horizon de réalisation. Ensemble, ces lignes forment la croix de ton être : elles relient l’intime et le monde, le je et le nous."
+    },
+    {
+      'id': '3',
+      'name': "Les Climats de l’Âme — Éléments & Modes",
+      'description': "Éléments (Feu, Terre, Air, Eau) → ton atmosphère énergétique. Modes (Cardinal, Fixe, Mutable) → ta manière d’avancer dans la vie.",
+      'narration': "Ton ciel est habité par une dominante de [Élément]. Cela signifie que tu avances avant tout par [fonction de l’élément]. Ton mode [Cardinal/Fixe/Mutable] révèle que tu as une manière [initier / stabiliser / transformer] ton chemin. Ce climat est le souffle général qui nourrit toutes tes planètes. "
+    },
+    {
+      'id': '4',
+      'name': "Les Planètes Personnelles — Ta voix intime",
+      'description': "Mercure : ta pensée, ton langage. Vénus : ton amour, tes désirs, ta beauté. Mars : ton feu, ton action, ta force vitale.",
+      'narration': "Mercure en [Signe/Maison] révèle comment ton esprit dialogue avec le monde. Vénus en [Signe/Maison] raconte ta manière d’aimer, de créer, de savourer la beauté. Mars en [Signe/Maison] montre comment ton feu intérieur se met en mouvement, là où tu poses tes actes et affirmes ta volonté."
+    },
+    {
+      'id': '5',
+      'name': "Les Planètes Sociales — Ton chemin de croissance",
+      'description': "Jupiter : expansion, confiance, abondance. Saturne : structure, responsabilité, maturité.",
+      'narration': "Jupiter t’ouvre les horizons de [Maison/Signe] : c’est là que tu apprends à grandir avec confiance. Saturne, lui, t’enseigne la patience et la solidité dans [Maison/Signe]. Ensemble, ils sculptent l’équilibre entre ton désir d’expansion et ta capacité à bâtir sur du solide."
+    },
+    {
+      'id': '6',
+      'name': "Les Transpersonnelles — Les vents de l’époque",
+      'description': "Uranus : liberté, innovation, rébellion. Neptune : intuition, rêve, compassion. Pluton : transformation, régénération, renaissance.",
+      'narration': "Uranus éveille en toi la nécessité de briser les chaînes dans [Maison/Signe]. Neptune t’invite à écouter le mystère et à t’abandonner à ton intuition en [Maison/Signe]. Pluton, lui, te conduit aux profondeurs pour renaître transformé·e à travers [Maison/Signe]."
+    },
+    {
+      'id': '7',
+      'name': "Les Messagers Karmiques",
+      'description': "Nœud Nord : direction évolutive. Nœud Sud : mémoire, acquis. Chiron : blessure sacrée → guérison. Lilith : vérité sauvage, part indomptée.",
+      'narration': "Ton Nœud Nord en [Signe/Maison] est l’appel de ton âme vers ton futur. Ton Nœud Sud en [Signe/Maison] porte les mémoires et les dons hérités, mais qu’il te faut dépasser. Chiron révèle ta blessure initiatique qui devient sagesse. Lilith dévoile ta vérité nue, la part sauvage de ton être qui refuse le compromis."
+    },
+    {
+      'id': '8',
+      'name': "Les Dialogues du Ciel — Aspects",
+      'description': "Chaque aspect est un chant vibratoire : Conjonction → fusion. Opposition → miroir. Carré → défi initiatique. Trigone → grâce. Sextile → opportunité subtile.",
+      'narration': "Entre [Planète] et [Planète], il existe une [conjonction/carré/opposition...]. C’est un dialogue qui t’invite à [intégration] : parfois tension, parfois harmonie, mais toujours porteur de croissance."
+    },
+    {
+      'id': '9',
+      'name': "Les Cycles — Lune & Éclipses",
+      'description': "Phase lunaire natale : ton rythme émotionnel profond. Éclipses proches de ta naissance : portails karmiques, points de bascule.",
+      'narration': "Tu es né·e sous une [phase lunaire] : ton énergie émotionnelle se vit comme [explication]. Si une éclipse a marqué ta naissance, elle t’invite à vivre des transformations intenses dans [Maison/Signe], comme une porte cosmique inscrite en toi."
+    }
+  ];
+
+  Future<void> _askOpenAIInterpretationCategory(int idx) async {
+
+      
+    if (_chartData == null) return;
+    setState(() {
+      _isLoadingInterpretation = true;
+      _chartInterpretation = null;
+    });
+
+    try {
+
+      print("======================");
+      print("_askOpenAIInterpretationCategory $idx");
+
+      final cat = _astrologyToneCategories[idx];
+      final narration = (cat['narration'] ?? '');
+      // Fallback: just stringify chart data for prompt
+      // final chartString = _chartData!.toString();
+
+      print(narration);
+
+      final placements = ChartAnalysis.getPlacements(_chartData!);
+      String placementsString = '';
+      String retrieverQuery = '';
+
+      // final planet = 
+
+      // '${planet['sign'] ?? ''} - ${planet['longitude'] != null ? AstrologyUtils.formatDegreeMinute(planet['longitude']) : (planet['formatted'] ?? '')}'
+
+      print(placements);
+      print("======================");
+
+
+      if(idx == 1) {
+        final sun = placements.firstWhere((p) => p.startsWith("Sun"));
+        final moon = placements.firstWhere((p) => p.startsWith("Moon"));
+        final asc = placements.firstWhere((p) => p.startsWith("Ascendant"), orElse: () => '');
+
+        placementsString = '$sun\n$moon\n$asc ?';
+
+        retrieverQuery = 'Que signifie ${ChartAnalysis.buildRetrieverQueryFR(placements)} en astrologie ?';
+
+
+      } else if (idx == 9) {
+        // Phase lunaire
+        // final moon = _chartData!["planets"].firstWhere((p) => p["name"] == "Moon");
+        // final sun = _chartData!["planets"].firstWhere((p) => p["name"] == "Sun");
+        // final phase = ChartAnalysis.getMoonPhase(sun["full_degree"], moon["full_degree"]);
+        // placements['Phase lunaire'] = phase;
+
+        // // Eclipse proche
+        // final isEclipse = ChartAnalysis.isNearEclipse(_chartData!);
+        // placements['Éclipse proche'] = isEclipse ? 'Oui' : 'Non';
+      } else {
+        placementsString = placements.join('\n');
+      }
+
+    // final prompt =
+    //   'You are an astrologer who always answers in a poetic and symbolic tone. \nUse the retrieved texts if available. If nothing is retrieved, use your own astrological knowledge.\n Follow this structure: :\n Narration: ${narration}\n Thème : ${cat['name'] ?? ''} and ${cat['description'] ?? ''}\nPlacement :\n$placementsString\n Retrieved texts:';
+
+    final prompt = """You are an astrologer who always answers in a symbolic tone. 
+    Use the retrieved texts if available. If nothing is retrieved, use your own astrological knowledge.
+    Do not output structured headers like Narration, Thème, Placement.
+    Keep the answer concise, evocative, and readable.
+    Do not include sources, citations, or any retrieved text markers in your answer.
+    Tone guidance:
+    - Narration: ${narration}
+    - Thème : ${cat['name'] ?? ''} and ${cat['description'] ?? ''}
+    """;
+
+    // Placement: $placementsString
+
+      setState(() {
+        _chartPrompt = prompt;
+        _promptController.text = prompt;
+      });
+      final answer = await ragService.askQuestion(retrieverQuery, systemPrompt: prompt);
+      final responseText = answer['answer'] ?? '';
+
+      if (mounted) {
+        setState(() {
+          _chartInterpretation = responseText;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _chartInterpretation = 'Erreur lors de l\'analyse: $e';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingInterpretation = false;
+        });
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -143,46 +307,6 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
     }
   }
 
-  Future<void> _askOpenAIInterpretation() async {
-    if (_chartData == null) return;
-    
-    setState(() {
-      _isLoadingInterpretation = true;
-      _chartInterpretation = null;
-    });
-
-    try {
-      // Get the prompt that will be sent
-      final prompt = _chartInterpretationService.getLastPrompt(_chartData!);
-      
-      // Store the prompt for editing if needed
-      setState(() {
-        _chartPrompt = prompt;
-        _promptController.text = prompt;
-      });
-
-      // Generate interpretation using the service
-      final answer = await _chartInterpretationService.generateChartInterpretation(_chartData!);
-      
-      if (mounted) {
-        setState(() {
-          _chartInterpretation = answer;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _chartInterpretation = 'Erreur lors de l\'analyse: $e';
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoadingInterpretation = false;
-        });
-      }
-    }
-  }
 
   Future<void> _sendCustomPrompt() async {
     if (_promptController.text.isEmpty) return;
@@ -473,40 +597,36 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
                 NatalWheel(chartData: _chartData!),
                 
                 const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: _isLoadingInterpretation ? null : _askOpenAIInterpretation,
-                      icon: _isLoadingInterpretation 
-                          ? const SizedBox(
-                              width: 16, 
-                              height: 16, 
-                              child: CircularProgressIndicator(strokeWidth: 2)
-                            )
-                          : const Icon(Icons.psychology),
-                      label: const Text('Analyse OpenAI'),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: List.generate(_astrologyToneCategories.length, (idx) {
+                    final cat = _astrologyToneCategories[idx];
+                    return ElevatedButton(
+                      onPressed: _isLoadingInterpretation ? null : () => _askOpenAIInterpretationCategory(idx),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.deepPurple,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          _showPromptEditor = !_showPromptEditor;
-                        });
-                      },
-                      icon: Icon(_showPromptEditor ? Icons.keyboard_arrow_up : Icons.edit),
-                      label: Text(_showPromptEditor ? 'Masquer' : 'Modifier prompt'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                  ],
+                      child: Text(cat['name']!.isNotEmpty ? cat['name']! : 'Synthèse', textAlign: TextAlign.center),
+                    );
+                  })
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _showPromptEditor = !_showPromptEditor;
+                    });
+                  },
+                  icon: Icon(_showPromptEditor ? Icons.keyboard_arrow_up : Icons.edit),
+                  label: Text(_showPromptEditor ? 'Masquer' : 'Modifier prompt'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                  ),
                 ),
 
                 // Prompt editor section
