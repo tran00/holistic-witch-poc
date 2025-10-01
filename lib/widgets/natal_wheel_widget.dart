@@ -588,7 +588,7 @@ class NatalWheelPainter extends CustomPainter {
         ];
         // final signName = zodiacNames[zodiacSign];
         final signName = zodiacNamesFull[zodiacSign];
-        final degreeText = '$degrees°${minutes.toString().padLeft(2, '0')}\' $signName';
+        final degreeText = '$degrees°${minutes.toString().padLeft(2, '0')}\'\n$signName';
         final degreePainter = TextPainter(
           text: TextSpan(
             text: degreeText,
