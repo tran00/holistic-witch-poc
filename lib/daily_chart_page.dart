@@ -341,8 +341,16 @@ ${e.toString()}''';
       final natalPlanets = (_natalChartData!['planets'] as List?)?.cast<Map<String, dynamic>>() ?? [];
       final transitPlanets = (_dailyChartData!['planets'] as List?)?.cast<Map<String, dynamic>>() ?? [];
       final natalHouses = (_natalChartData!['houses'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      final dailyHouses = (_dailyChartData!['houses'] as List?)?.cast<Map<String, dynamic>>() ?? [];
       
-      print('🔍 Debug - Natal planets: ${natalPlanets.length}, Transit planets: ${transitPlanets.length}, Houses: ${natalHouses.length}');
+      print('🔍 Debug - Natal planets: ${natalPlanets.length}, Transit planets: ${transitPlanets.length}');
+      print('🏠 Debug - Natal houses: ${natalHouses.length}, Daily houses: ${dailyHouses.length}');
+      
+      // Debug: Print the actual house data structure
+      print('📋 Daily houses structure:');
+      for (int i = 0; i < dailyHouses.length && i < 3; i++) {
+        print('   House ${i + 1}: ${dailyHouses[i]}');
+      }
     
       // Convert French planet name to English for chart data lookup
       final englishPlanetName = _getEnglishPlanetName(planetName);
@@ -369,8 +377,8 @@ ${e.toString()}''';
       final transitSign = _getZodiacSign(transitLongitude);
       final transitDegrees = _getDegreesInSign(transitLongitude);
       
-      // Find which natal house this transit is in
-      final transitHouse = _findHouseForLongitude(transitLongitude, natalHouses);
+      // Find which house this transit is in using DAILY chart houses (where the transit actually is)
+      final transitHouse = _findHouseForLongitude(transitLongitude, dailyHouses);
       
       final natalDate = _natalDateController.text;
       final transitDate = _dailyDateController.text;
@@ -436,19 +444,76 @@ Gardez l'interprétation accessible, pratique et bienveillante, en français.'''
   }
 
   int _findHouseForLongitude(double longitude, List<Map<String, dynamic>> houses) {
+    if (houses.isEmpty) return 1;
+    
+    // Normalize longitude to 0-360 range
+    longitude = longitude % 360;
+    if (longitude < 0) longitude += 360;
+    
+    print('🏠 Finding house for longitude ${longitude.toStringAsFixed(2)}°');
+    
+    // Print all house cusps for debugging with multiple possible field names
     for (int i = 0; i < houses.length; i++) {
       final house = houses[i];
-      final cusp = (house['cusp'] as num?)?.toDouble();
-      if (cusp == null) continue;
+      print('   House ${i + 1} data: $house');
       
-      final nextCusp = i < houses.length - 1 
-          ? (houses[i + 1]['cusp'] as num?)?.toDouble() ?? ((cusp) + 360)
-          : ((houses[0]['cusp'] as num?)?.toDouble() ?? 0) + 360;
+      // Try different possible field names for house cusp
+      final cusp = (house['cusp'] as num?)?.toDouble() ??
+                  (house['start_degree'] as num?)?.toDouble() ??
+                  (house['longitude'] as num?)?.toDouble() ??
+                  (house['degree'] as num?)?.toDouble();
+      print('   House ${i + 1}: ${cusp?.toStringAsFixed(2)}°');
+    }
+    
+    for (int i = 0; i < houses.length; i++) {
+      final house = houses[i];
       
-      if (longitude >= cusp && longitude < nextCusp) {
+      // Try different possible field names for house cusp
+      final cusp = (house['cusp'] as num?)?.toDouble() ??
+                  (house['start_degree'] as num?)?.toDouble() ??
+                  (house['longitude'] as num?)?.toDouble() ??
+                  (house['degree'] as num?)?.toDouble();
+      
+      if (cusp == null) {
+        print('⚠️ House ${i + 1}: No valid cusp found in $house');
+        continue;
+      }
+      
+      // Normalize cusp to 0-360 range
+      final normalizedCusp = cusp % 360;
+      final currentCusp = normalizedCusp < 0 ? normalizedCusp + 360 : normalizedCusp;
+      
+      // Get next house cusp
+      final nextIndex = (i + 1) % houses.length;
+      final nextHouse = houses[nextIndex];
+      final nextCusp = (nextHouse['cusp'] as num?)?.toDouble() ??
+                      (nextHouse['start_degree'] as num?)?.toDouble() ??
+                      (nextHouse['longitude'] as num?)?.toDouble() ??
+                      (nextHouse['degree'] as num?)?.toDouble();
+      
+      if (nextCusp == null) continue;
+      
+      final normalizedNextCusp = nextCusp % 360;
+      final nextHouseCusp = normalizedNextCusp < 0 ? normalizedNextCusp + 360 : normalizedNextCusp;
+      
+      // Check if longitude falls within this house
+      bool isInHouse = false;
+      
+      if (currentCusp <= nextHouseCusp) {
+        // Normal case: house doesn't cross 0°
+        isInHouse = longitude >= currentCusp && longitude < nextHouseCusp;
+      } else {
+        // House crosses 0° (e.g., from 350° to 20°)
+        isInHouse = longitude >= currentCusp || longitude < nextHouseCusp;
+      }
+      
+      if (isInHouse) {
+        print('🎯 Planet at ${longitude.toStringAsFixed(2)}° is in House ${i + 1} (${currentCusp.toStringAsFixed(2)}° - ${nextHouseCusp.toStringAsFixed(2)}°)');
         return i + 1;
       }
     }
+    
+    print('⚠️ Could not determine house, defaulting to House 1');
     return 1; // Default to first house
   }
 
