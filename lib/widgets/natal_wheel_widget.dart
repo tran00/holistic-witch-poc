@@ -1,8 +1,22 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 
+// Helper function to create text style for astrological symbols
+TextStyle astrologicalSymbolStyle({
+  required double fontSize,
+  required Color color,
+  FontWeight? fontWeight,
+}) {
+  return TextStyle(
+    fontSize: fontSize,
+    color: color,
+    fontWeight: fontWeight,
+    // fontFamily: 'NotoSansSymbols2',
+  );
+}
+
 const zodiacGlyphs = [
-  '♈', // Aries
+  '♈', // Aries  final startAngle = (-pi) - ((i * 30 - zodiacBaseDegree) * pi / 180); // Fixed zodiac orientation
   '♉', // Taurus
   '♊', // Gemini
   '♋', // Cancer
@@ -590,8 +604,8 @@ class NatalWheelPainter extends CustomPainter {
         final glyphPainter = TextPainter(
           text: TextSpan(
             text: glyph,
-            style: TextStyle(
-              fontSize: fontSize, 
+            style: astrologicalSymbolStyle(
+              fontSize: fontSize,
               color: glyphColor,
               fontWeight: FontWeight.bold,
             ),
@@ -931,9 +945,10 @@ class NatalWheelPainter extends CustomPainter {
       final textPainter = TextPainter(
         text: TextSpan(
           text: zodiacGlyphs[i],
-          style: const TextStyle(
-            fontSize: 22, 
-            color: Colors.black,
+          style: astrologicalSymbolStyle(
+            fontSize: 22,
+            color: Colors.black,            
+
           ),
         ),
         textDirection: TextDirection.ltr,

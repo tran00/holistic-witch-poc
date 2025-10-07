@@ -939,36 +939,6 @@ Gardez l'interprétation accessible, pratique et bienveillante, en français.'''
                     ),
                   ],
                 ),
-                
-                // Debug Information Section
-                if (debugInfo.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  ExpansionTile(
-                    title: const Text(
-                      '🔍 Debug Information',
-                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
-                    ),
-                    children: [
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: SelectableText(
-                          debugInfo,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontFamily: 'monospace',
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                
                 // Prompt Section
                 if (prompt.isNotEmpty) ...[
                   const SizedBox(height: 16),
