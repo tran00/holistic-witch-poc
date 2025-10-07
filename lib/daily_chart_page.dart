@@ -45,10 +45,17 @@ class _DailyChartPageState extends State<DailyChartPage> {
   Map<String, String> _planetPrompts = {};
   Map<String, String> _planetDebugInfo = {};
   Map<String, bool> _planetLoadingStates = {
+    // Slow planets
     'Saturn': false,
     'Uranus': false,
     'Neptune': false,
     'Pluto': false,
+    // Fast planets  
+    'La lune': false,
+    'Mercure': false,
+    'Vénus': false,
+    'Mars': false,
+    'Jupiter': false,
   };
 
   @override
@@ -312,6 +319,21 @@ ${e.toString()}''';
     }
   }
 
+  String _getEnglishPlanetName(String frenchName) {
+    switch (frenchName) {
+      case 'La lune': return 'Moon';
+      case 'Mercure': return 'Mercury';
+      case 'Vénus': return 'Venus';
+      case 'Mars': return 'Mars';
+      case 'Jupiter': return 'Jupiter';
+      case 'Saturn': return 'Saturn';
+      case 'Uranus': return 'Uranus';
+      case 'Neptune': return 'Neptune';
+      case 'Pluto': return 'Pluto';
+      default: return frenchName; // Return as-is if no mapping found
+    }
+  }
+
   String _buildPlanetTransitPrompt(String planetName) {
     if (_natalChartData == null || _dailyChartData == null) return '';
 
@@ -322,14 +344,19 @@ ${e.toString()}''';
       
       print('🔍 Debug - Natal planets: ${natalPlanets.length}, Transit planets: ${transitPlanets.length}, Houses: ${natalHouses.length}');
     
-      // Find the transit planet
+      // Convert French planet name to English for chart data lookup
+      final englishPlanetName = _getEnglishPlanetName(planetName);
+      print('🔄 Planet name mapping: $planetName -> $englishPlanetName');
+    
+      // Find the transit planet using English name
       final transitPlanet = transitPlanets.firstWhere(
-        (planet) => planet['name'].toString().toLowerCase() == planetName.toLowerCase(),
+        (planet) => planet['name'].toString().toLowerCase() == englishPlanetName.toLowerCase(),
         orElse: () => <String, dynamic>{},
       );
       
       if (transitPlanet.isEmpty) {
-        print('❌ Transit planet $planetName not found');
+        print('❌ Transit planet $englishPlanetName (from $planetName) not found');
+        print('📋 Available planets: ${transitPlanets.map((p) => p['name']).join(', ')}');
         return '';
       }
       
@@ -881,6 +908,51 @@ Gardez l'interprétation accessible, pratique et bienveillante, en français.'''
                           ],
                         );
                       }).toList(),
+                      const SizedBox(height: 40),
+                      
+                      // Transit des planètes rapides Section
+                      const Text(
+                        'Transit des planètes rapides',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF7B2CBF),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      // Display fast planets with their buttons and interpretations inline
+                      ...['La lune', 'Mercure', 'Vénus', 'Mars', 'Jupiter'].map((planetName) {
+                        return Column(
+                          children: [
+                            // Planet button
+                            Center(
+                              child: _buildPlanetButton(
+                                planetName, 
+                                _getPlanetIcon(planetName), 
+                                _getPlanetColor(planetName)
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            // Show interpretation immediately below the button if available
+                            Builder(
+                              builder: (context) {
+                                final hasInterpretation = _planetInterpretations.containsKey(planetName);
+                                final hasDebugInfo = _planetDebugInfo.containsKey(planetName);
+                                final isLoading = _planetLoadingStates[planetName] ?? false;
+                                
+                                if (hasInterpretation || hasDebugInfo || isLoading) {
+                                  return _buildInterpretationCard(
+                                    planetName, 
+                                    _planetInterpretations[planetName] ?? ''
+                                  );
+                                }
+                                return const SizedBox.shrink();
+                              },
+                            ),
+                            const SizedBox(height: 24), // Space between planet sections
+                          ],
+                        );
+                      }).toList(),
                       const SizedBox(height: 60),
                     ],
                   ],
@@ -1023,20 +1095,34 @@ Gardez l'interprétation accessible, pratique et bienveillante, en français.'''
 
   IconData _getPlanetIcon(String planetName) {
     switch (planetName) {
+      // Slow planets
       case 'Saturn': return Icons.schedule;
       case 'Uranus': return Icons.electric_bolt;
       case 'Neptune': return Icons.water_drop;
       case 'Pluto': return Icons.transform;
+      // Fast planets
+      case 'La lune': return Icons.nightlight_round;
+      case 'Mercure': return Icons.speed;
+      case 'Vénus': return Icons.favorite;
+      case 'Mars': return Icons.whatshot;
+      case 'Jupiter': return Icons.star;
       default: return Icons.circle;
     }
   }
 
   Color _getPlanetColor(String planetName) {
     switch (planetName) {
+      // Slow planets
       case 'Saturn': return const Color(0xFF8B4513);
       case 'Uranus': return const Color(0xFF1E90FF);
       case 'Neptune': return const Color(0xFF4169E1);
       case 'Pluto': return const Color(0xFF8B008B);
+      // Fast planets
+      case 'La lune': return const Color(0xFFC0C0C0); // Silver
+      case 'Mercure': return const Color(0xFFFF8C00); // Dark orange
+      case 'Vénus': return const Color(0xFFFF69B4); // Hot pink
+      case 'Mars': return const Color(0xFFDC143C); // Crimson
+      case 'Jupiter': return const Color(0xFFFFD700); // Gold
       default: return const Color(0xFF7B2CBF);
     }
   }
