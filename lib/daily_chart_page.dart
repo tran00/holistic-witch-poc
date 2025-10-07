@@ -7,8 +7,7 @@ import 'widgets/natal_wheel_widget.dart';
 import 'widgets/composite_natal_wheel_widget.dart';
 import 'services/sweph_service.dart';
 import 'services/astrology_calculation_service.dart';
-import 'openai_client.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'rag_service_singleton.dart';
 
 class DailyChartPage extends StatefulWidget {
   const DailyChartPage({super.key});
@@ -51,12 +50,10 @@ class _DailyChartPageState extends State<DailyChartPage> {
     'Neptune': false,
     'Pluto': false,
   };
-  late OpenAIClient _openAIClient;
 
   @override
   void initState() {
     super.initState();
-    _openAIClient = OpenAIClient(dotenv.env['OPENAI_API_KEY'] ?? '');
     _initializeServices();
   }
 
@@ -254,51 +251,63 @@ class _DailyChartPageState extends State<DailyChartPage> {
       
       setState(() {
         _planetPrompts[planetName] = prompt;
-        _planetDebugInfo[planetName] = '''📤 Prompt envoyé à OpenAI...
+        _planetDebugInfo[planetName] = '''📤 Requête envoyée au système RAG...
 
-� API Key configurée: ${_openAIClient.apiKey.isNotEmpty ? 'Oui' : 'Non'}
-📊 Longueur du prompt: ${prompt.length} caractères
-🌍 Endpoint: OpenAI API
-⏱️ Début de l\'appel...''';
+🔮 Service RAG configuré et prêt
+📊 Longueur de la requête: ${prompt.length} caractères
+🌍 Endpoint: RAG Service (Pinecone + Supabase + OpenAI)
+⏱️ Début de l\'analyse...''';
       });
 
-      print('🚀 Sending prompt for $planetName to OpenAI...');
+      print('🚀 Sending query for $planetName to RAG service...');
       
-      final interpretation = await _openAIClient.sendMessage(prompt);
+      // Use RAG service with astrology context filter
+      final ragResponse = await ragService.askQuestion(
+        prompt,
+        systemPrompt: "Tu es un astrologue professionnel expert en transits planétaires. Réponds en français de manière détaillée et bienveillante en t'appuyant sur le contexte astrologique fourni.",
+        contextFilter: 'astrologie', // Filter for astrology-related content
+        topK: 8, // Get more relevant sources
+        scoreThreshold: 0.4, // Lower threshold for more context
+      );
       
-      print('✅ Received interpretation for $planetName: ${interpretation.length} characters');
+      final interpretation = ragResponse['answer'] as String;
+      final sources = ragResponse['sources'] as List;
+      
+      print('✅ Received RAG interpretation for $planetName: ${interpretation.length} characters from ${sources.length} sources');
       
       setState(() {
         _planetInterpretations[planetName] = interpretation;
         _planetLoadingStates[planetName] = false;
-        _planetDebugInfo[planetName] = '''✅ Analyse terminée avec succès !
+        _planetDebugInfo[planetName] = '''✅ Analyse RAG terminée avec succès !
         
 📊 Statistiques:
-• Prompt envoyé: ${prompt.length} caractères
+• Requête envoyée: ${prompt.length} caractères
 • Réponse reçue: ${interpretation.length} caractères
+• Sources consultées: ${sources.length}
 • Statut: Succès ✅
-• API: OpenAI GPT
+• Système: RAG (Pinecone + Supabase + OpenAI)
+• Context Filter: Astrologie
 • Temps de traitement: ~quelques secondes''';
       });
       
     } catch (e) {
-      print('❌ Error getting interpretation for $planetName: $e');
+      print('❌ Error getting RAG interpretation for $planetName: $e');
       
       setState(() {
         _planetLoadingStates[planetName] = false;
-        _planetDebugInfo[planetName] = '''❌ Erreur lors de l\'analyse:
+        _planetDebugInfo[planetName] = '''❌ Erreur lors de l\'analyse RAG:
         
 🚨 Type d\'erreur: ${e.runtimeType}
 📝 Message: ${e.toString()}
 🔧 Suggestions:
 • Vérifiez votre connexion internet
-• Vérifiez la clé API OpenAI dans .env
-• Vérifiez les quotas OpenAI
+• Vérifiez les configurations RAG dans .env
+• Vérifiez Pinecone et Supabase
 • Consultez les logs de debug
 
 💡 Détails techniques:
 ${e.toString()}''';
-        _errorMessage = 'Failed to get $planetName interpretation: $e';
+        _errorMessage = 'Failed to get $planetName RAG interpretation: $e';
       });
     }
   }
@@ -839,32 +848,39 @@ Gardez l'interprétation accessible, pratique et bienveillante, en français.'''
                         ),
                       ),
                       const SizedBox(height: 20),
-                      Wrap(
-                        spacing: 16,
-                        runSpacing: 16,
-                        alignment: WrapAlignment.center,
-                        children: [
-                          _buildPlanetButton('Saturn', Icons.schedule, Color(0xFF8B4513)),
-                          _buildPlanetButton('Uranus', Icons.electric_bolt, Color(0xFF1E90FF)),
-                          _buildPlanetButton('Neptune', Icons.water_drop, Color(0xFF4169E1)),
-                          _buildPlanetButton('Pluto', Icons.transform, Color(0xFF8B008B)),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      // Display interpretations and debug info
+                      // Display planets with their buttons and interpretations inline
                       ...['Saturn', 'Uranus', 'Neptune', 'Pluto'].map((planetName) {
-                        final hasInterpretation = _planetInterpretations.containsKey(planetName);
-                        final hasDebugInfo = _planetDebugInfo.containsKey(planetName);
-                        final isLoading = _planetLoadingStates[planetName] ?? false;
-                        
-                        if (hasInterpretation || hasDebugInfo || isLoading) {
-                          return _buildInterpretationCard(
-                            planetName, 
-                            _planetInterpretations[planetName] ?? ''
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      }),
+                        return Column(
+                          children: [
+                            // Planet button
+                            Center(
+                              child: _buildPlanetButton(
+                                planetName, 
+                                _getPlanetIcon(planetName), 
+                                _getPlanetColor(planetName)
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            // Show interpretation immediately below the button if available
+                            Builder(
+                              builder: (context) {
+                                final hasInterpretation = _planetInterpretations.containsKey(planetName);
+                                final hasDebugInfo = _planetDebugInfo.containsKey(planetName);
+                                final isLoading = _planetLoadingStates[planetName] ?? false;
+                                
+                                if (hasInterpretation || hasDebugInfo || isLoading) {
+                                  return _buildInterpretationCard(
+                                    planetName, 
+                                    _planetInterpretations[planetName] ?? ''
+                                  );
+                                }
+                                return const SizedBox.shrink();
+                              },
+                            ),
+                            const SizedBox(height: 24), // Space between planet sections
+                          ],
+                        );
+                      }).toList(),
                       const SizedBox(height: 60),
                     ],
                   ],
@@ -878,7 +894,7 @@ Gardez l'interprétation accessible, pratique et bienveillante, en français.'''
     final isLoading = _planetLoadingStates[planetName] ?? false;
     
     return SizedBox(
-      width: 160,
+      width: 200, // Increased width for better visual balance when centered
       child: ElevatedButton.icon(
         onPressed: isLoading ? null : () {
           print('🔘 Button clicked for $planetName');
@@ -893,12 +909,12 @@ Gardez l'interprétation accessible, pratique et bienveillante, en français.'''
             : Icon(icon),
         label: Text(
           isLoading ? 'Analyse...' : '$planetName en transit',
-          style: const TextStyle(fontSize: 13),
+          style: const TextStyle(fontSize: 14), // Slightly larger text
         ),
         style: ElevatedButton.styleFrom(
           padding: const EdgeInsets.symmetric(
-            vertical: 12,
-            horizontal: 16,
+            vertical: 14, // Slightly more padding
+            horizontal: 20,
           ),
           backgroundColor: color,
           foregroundColor: Colors.white,
@@ -944,7 +960,7 @@ Gardez l'interprétation accessible, pratique et bienveillante, en français.'''
                   const SizedBox(height: 16),
                   ExpansionTile(
                     title: const Text(
-                      '📝 Prompt envoyé à OpenAI',
+                      '📝 Requête envoyée au système RAG',
                       style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
                     ),
                     children: [
@@ -972,7 +988,7 @@ Gardez l'interprétation accessible, pratique et bienveillante, en français.'''
                 if (interpretation.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   const Text(
-                    '🤖 Interprétation OpenAI',
+                    '� Interprétation RAG (IA + Base de Connaissances)',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.green,
