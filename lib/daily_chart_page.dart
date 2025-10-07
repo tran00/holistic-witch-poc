@@ -198,6 +198,14 @@ class _DailyChartPageState extends State<DailyChartPage> {
     }
   }
 
+  void _clearCharts() {
+    setState(() {
+      _natalChartData = null;
+      _dailyChartData = null;
+      _errorMessage = null;
+    });
+  }
+
   Widget _buildNatalForm() {
     return Card(
       child: Padding(
@@ -513,18 +521,27 @@ class _DailyChartPageState extends State<DailyChartPage> {
                     const SizedBox(height: 16),
                     _buildDailyForm(),
                     const SizedBox(height: 24),
-                    Center(
-                      child: ElevatedButton.icon(
-                        onPressed: _isLoading ? null : _generateCharts,
-                        icon: _isLoading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.auto_awesome),
-                        label: Text(_isLoading ? 'Generating Charts...' : 'Generate Chart Comparison'),
-                      ),
+                    Wrap(
+                      spacing: 20,
+                      alignment: WrapAlignment.center,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: _isLoading ? null : _generateCharts,
+                          icon: _isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.auto_awesome),
+                          label: Text(_isLoading ? 'Generating Charts...' : 'Generate Chart Comparison'),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: _isLoading ? null : _clearCharts,
+                          icon: const Icon(Icons.clear),
+                          label: const Text('Clear Charts'),
+                        ),
+                      ],
                     ),
                     if (_errorMessage != null)
                       Padding(
