@@ -29,6 +29,12 @@ const planetGlyphs = {
   'Pluto': '♇',
   'Chiron': '⚷',
   
+  // House cusps and angles
+  'Ascendant': 'ASC',
+  'Midheaven': 'MC',
+  'Descendant': 'DESC',
+  'Imum Coeli': 'IC',
+  
   // All possible node variations
   'North Node': '☊',
   'South Node': '☋',
@@ -541,12 +547,22 @@ class NatalWheelPainter extends CustomPainter {
         final planetName = planet['name'] ?? '';
         final shortName = planet['short_name'] ?? '';
 
+        // Skip Ascendant and Midheaven as they're drawn separately
+        if (planetName == 'Ascendant' || planetName == 'Midheaven') {
+          continue;
+        }
+
         // Try multiple ways to find the glyph
         String glyph = planetGlyphs[planetName] ?? 
                        planetGlyphs[shortName] ?? 
                        planetGlyphs[planetName.toUpperCase()] ??
                        planetGlyphs[shortName.toUpperCase()] ??
                        '?'; // Debug fallback
+
+        // Debug: Print unknown planet names
+        if (glyph == '?') {
+          print('Unknown planet: name="$planetName", short_name="$shortName"');
+        }
 
         // Special styling for nodes
         Color glyphColor = Colors.black;
@@ -685,6 +701,13 @@ class NatalWheelPainter extends CustomPainter {
       final degreeRulerRadius = zodiacRadiusInner - 2; // Connect to the degree ruler
 
       for (final planet in planets) {
+        final planetName = planet['name'] ?? '';
+        
+        // Skip Ascendant and Midheaven lines as they're drawn separately
+        if (planetName == 'Ascendant' || planetName == 'Midheaven') {
+          continue;
+        }
+        
         final deg = (planet['longitude'] ?? planet['full_degree'] ?? 0).toDouble();
         final angle = (-pi) - (deg - ascDegree) * pi / 180; // Rotated base
         
@@ -719,6 +742,13 @@ class NatalWheelPainter extends CustomPainter {
         final planetRadius = radius + 60; // Updated to match planet positions
 
         for (final planet in planets) {
+          final planetName = planet['name'] ?? '';
+          
+          // Skip Ascendant and Midheaven lines as they're drawn separately
+          if (planetName == 'Ascendant' || planetName == 'Midheaven') {
+            continue;
+          }
+          
           final deg = (planet['longitude'] ?? planet['full_degree'] ?? 0).toDouble();
           final angle = (-pi) - (deg - ascDegree) * pi / 180; // Rotated base
           final px = center.dx + planetRadius * cos(angle);

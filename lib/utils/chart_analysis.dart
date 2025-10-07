@@ -168,7 +168,7 @@ class ChartAnalysis {
         diff = diff > 180 ? 360 - diff : diff; // minimal angle
         
         // Debug: Print angle differences to check for trines
-        print('Checking ${planet1["name"]} vs ${planet2["name"]}: angle difference = $diff°');
+        // print('Checking ${planet1["name"]} vs ${planet2["name"]}: angle difference = $diff°');
         
         final aspectInfo = _checkAspectWithOrb(diff);
         if (aspectInfo != null) {
