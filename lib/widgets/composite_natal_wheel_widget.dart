@@ -138,6 +138,68 @@ class TransitOverlayPainter extends CustomPainter {
           );
           textPainter.layout();
           textPainter.paint(canvas, Offset(planetX - textPainter.width / 2, planetY - textPainter.height / 2));
+          
+          // Draw retrograde indicator "R" if planet is retrograde
+          final isRetrograde = planet['is_retrograde'] == true || 
+                              planet['retrograde'] == true ||
+                              (planet['speed'] != null && (planet['speed'] as num) < 0);
+          if (isRetrograde) {
+            final retroPainter = TextPainter(
+              text: const TextSpan(
+                text: 'R',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              textDirection: TextDirection.ltr,
+            )..layout();
+            retroPainter.paint(
+              canvas,
+              Offset(
+                planetX - textPainter.width / 2 + 15,
+                planetY + textPainter.height / 2 - 15,
+              ),
+            );
+          }
+
+          // Calculate zodiac degrees and minutes
+          final rawDegrees = planetDegree;
+          final zodiacSign = (rawDegrees / 30).floor().clamp(0, 11);
+          const zodiacNamesFull = [
+            'Bélier', 'Taureau', 'Gémeaux', 'Cancer', 'Lion', 'Vierge',
+            'Balance', 'Scorpion', 'Sagittaire', 'Capricorne', 'Verseau', 'Poissons'
+          ];
+          final degreesInSign = rawDegrees % 30;
+          final degrees = degreesInSign.floor();
+          final minutes = ((degreesInSign - degrees) * 60).round();
+          final signName = zodiacNamesFull[zodiacSign];
+          final degreeText = '$degrees°${minutes.toString().padLeft(2, '0')}\'\n$signName';
+          
+          final degreePainter = TextPainter(
+            text: TextSpan(
+              text: degreeText,
+              style: const TextStyle(
+                fontSize: 10, 
+                color: Colors.blue,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            textDirection: TextDirection.ltr,
+          )..layout();
+          
+          // Determine position for degree text (left or right side of planet)
+          final normalizedAngle = (angle + 2 * pi) % (2 * pi);
+          final isOnLeftSide = normalizedAngle > pi / 2 && normalizedAngle < 3 * pi / 2;
+          final textOffsetX = isOnLeftSide 
+              ? planetX - textPainter.width / 2 - degreePainter.width - 4
+              : planetX + textPainter.width / 2 + 4;
+          final textOffsetY = planetY - degreePainter.height / 2;
+          degreePainter.paint(
+            canvas,
+            Offset(textOffsetX, textOffsetY),
+          );
         }
       }
     }
