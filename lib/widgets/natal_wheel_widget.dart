@@ -224,9 +224,8 @@ class NatalWheelPainter extends CustomPainter {
     canvas.drawCircle(center, radius + 20, outerCirclePaint); // Adjusted outer circle for new spacing
 
     final houses = (chartData['houses'] is List) ? chartData['houses'] as List : [];
-    final ascDegree = (houses.isNotEmpty && houses.first['start_degree'] is num)
-        ? (houses.first['start_degree'] as num).toDouble()
-        : 0.0;
+    // Use fixed orientation: 0° Aries at 9 o'clock (horizontal left)
+    final ascDegree = 0.0;
 
     // Zodiac radii (inner)
     final zodiacRadiusOuter = radius - 5;
