@@ -224,16 +224,19 @@ class NatalWheelPainter extends CustomPainter {
     canvas.drawCircle(center, radius + 20, outerCirclePaint); // Adjusted outer circle for new spacing
 
     final houses = (chartData['houses'] is List) ? chartData['houses'] as List : [];
-    // Use the actual Ascendant degree from chart data, not fixed 0°
+    // Use the actual Ascendant degree for house/planet positioning only
     final ascDegree = chartData['ascendant'] as double? ?? 0.0;
+    
+    // For zodiac signs, also use ascendant degree to properly orient the chart
+    final zodiacBaseDegree = ascDegree;
 
     // Zodiac radii (inner)
     final zodiacRadiusOuter = radius - 5;
     final zodiacRadiusInner = radius - 20;
 
-    // Draw zodiac segments (arcs) - inner
+    // Draw zodiac segments (arcs) - inner with ascendant-based orientation
     for (int i = 0; i < 12; i++) {
-      final startAngle = (-pi) - ((i * 30 - ascDegree) * pi / 180); // Rotated base
+      final startAngle = (-pi) - ((i * 30 - zodiacBaseDegree) * pi / 180); // Ascendant-based zodiac orientation
       final sweepAngle = 30 * pi / 180;
       final arcPaint = Paint()
         ..color = Colors.primaries[i % Colors.primaries.length].withOpacity(0.15)
@@ -918,16 +921,20 @@ class NatalWheelPainter extends CustomPainter {
     for (int i = 0; i < 12; i++) {
       // Calculate the middle of each zodiac sign (15° from the start of each sign)
       final signMiddleDegree = i * 30 + 15; // Middle of each 30° zodiac sign
-      final midAngle = (-pi) - ((signMiddleDegree - ascDegree) * pi / 180); // Rotated base
+      final midAngle = (-pi) - ((signMiddleDegree - zodiacBaseDegree) * pi / 180); // Ascendant-based zodiac orientation
       
       // Position between aspects circle and zodiac outer circle (e.g., at radius - 40)
       final glyphRadius = radius - 40;
       final zx = center.dx + glyphRadius * cos(midAngle);
       final zy = center.dy + glyphRadius * sin(midAngle);
+      
       final textPainter = TextPainter(
         text: TextSpan(
           text: zodiacGlyphs[i],
-          style: const TextStyle(fontSize: 22, color: Colors.deepPurple),
+          style: const TextStyle(
+            fontSize: 22, 
+            color: Colors.black,
+          ),
         ),
         textDirection: TextDirection.ltr,
       )..layout();
@@ -939,7 +946,7 @@ class NatalWheelPainter extends CustomPainter {
 
     // Draw thick border at each zodiac sign boundary (inner)
     for (int i = 0; i < 12; i++) {
-      final angle = (-pi) - ((i * 30 - ascDegree) * pi / 180); // Rotated base
+      final angle = (-pi) - ((i * 30 - zodiacBaseDegree) * pi / 180); // Ascendant-based zodiac orientation
       final glyphRadius = radius - 60;
       final start = center + Offset(zodiacRadiusInner * cos(angle), zodiacRadiusInner * sin(angle));
       final end = center + Offset(glyphRadius * cos(angle), glyphRadius * sin(angle));

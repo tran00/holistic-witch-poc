@@ -72,6 +72,13 @@ class AppDrawer extends StatelessWidget {
             },
           ),
           ListTile(
+            leading: const Icon(Icons.compare),
+            title: const Text('Daily Chart Comparison'),
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/daily-chart');
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.psychology),
             title: const Text('Demo RAG - Questions IA'),
             onTap: () {
@@ -82,13 +89,6 @@ class AppDrawer extends StatelessWidget {
                   builder: (context) => const RagDemoPage(),
                 ),
               );
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.compare),
-            title: const Text('Daily Chart Comparison'),
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/daily-chart');
             },
           ),
           ListTile(

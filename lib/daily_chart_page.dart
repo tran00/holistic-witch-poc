@@ -43,6 +43,8 @@ class _DailyChartPageState extends State<DailyChartPage> {
 
   // Transit interpretation state
   Map<String, String> _planetInterpretations = {};
+  Map<String, String> _planetPrompts = {};
+  Map<String, String> _planetDebugInfo = {};
   Map<String, bool> _planetLoadingStates = {
     'Saturn': false,
     'Uranus': false,
@@ -217,6 +219,8 @@ class _DailyChartPageState extends State<DailyChartPage> {
       _dailyChartData = null;
       _errorMessage = null;
       _planetInterpretations.clear();
+      _planetPrompts.clear();
+      _planetDebugInfo.clear();
       _planetLoadingStates = {
         'Saturn': false,
         'Uranus': false,
@@ -227,25 +231,73 @@ class _DailyChartPageState extends State<DailyChartPage> {
   }
 
   Future<void> _requestPlanetTransitInterpretation(String planetName) async {
-    if (_natalChartData == null || _dailyChartData == null) return;
+    print('🌟 Starting interpretation request for $planetName');
+    
+    if (_natalChartData == null || _dailyChartData == null) {
+      print('❌ Chart data missing: natal=${_natalChartData != null}, daily=${_dailyChartData != null}');
+      setState(() {
+        _planetDebugInfo[planetName] = '❌ Données manquantes: Veuillez d\'abord générer les cartes natale et quotidienne.';
+      });
+      return;
+    }
 
     setState(() {
       _planetLoadingStates[planetName] = true;
+      _planetDebugInfo[planetName] = '🔄 Début de l\'analyse pour $planetName...';
     });
 
     try {
       // Build prompt with specific planet transit information
       final String prompt = _buildPlanetTransitPrompt(planetName);
       
+      print('📝 Prompt generated for $planetName: ${prompt.length} characters');
+      
+      setState(() {
+        _planetPrompts[planetName] = prompt;
+        _planetDebugInfo[planetName] = '''📤 Prompt envoyé à OpenAI...
+
+� API Key configurée: ${_openAIClient.apiKey.isNotEmpty ? 'Oui' : 'Non'}
+📊 Longueur du prompt: ${prompt.length} caractères
+🌍 Endpoint: OpenAI API
+⏱️ Début de l\'appel...''';
+      });
+
+      print('🚀 Sending prompt for $planetName to OpenAI...');
+      
       final interpretation = await _openAIClient.sendMessage(prompt);
+      
+      print('✅ Received interpretation for $planetName: ${interpretation.length} characters');
       
       setState(() {
         _planetInterpretations[planetName] = interpretation;
         _planetLoadingStates[planetName] = false;
+        _planetDebugInfo[planetName] = '''✅ Analyse terminée avec succès !
+        
+📊 Statistiques:
+• Prompt envoyé: ${prompt.length} caractères
+• Réponse reçue: ${interpretation.length} caractères
+• Statut: Succès ✅
+• API: OpenAI GPT
+• Temps de traitement: ~quelques secondes''';
       });
+      
     } catch (e) {
+      print('❌ Error getting interpretation for $planetName: $e');
+      
       setState(() {
         _planetLoadingStates[planetName] = false;
+        _planetDebugInfo[planetName] = '''❌ Erreur lors de l\'analyse:
+        
+🚨 Type d\'erreur: ${e.runtimeType}
+📝 Message: ${e.toString()}
+🔧 Suggestions:
+• Vérifiez votre connexion internet
+• Vérifiez la clé API OpenAI dans .env
+• Vérifiez les quotas OpenAI
+• Consultez les logs de debug
+
+💡 Détails techniques:
+${e.toString()}''';
         _errorMessage = 'Failed to get $planetName interpretation: $e';
       });
     }
@@ -254,29 +306,40 @@ class _DailyChartPageState extends State<DailyChartPage> {
   String _buildPlanetTransitPrompt(String planetName) {
     if (_natalChartData == null || _dailyChartData == null) return '';
 
-    final natalPlanets = _natalChartData!['planets'] as List<Map<String, dynamic>>;
-    final transitPlanets = _dailyChartData!['planets'] as List<Map<String, dynamic>>;
-    final natalHouses = _natalChartData!['houses'] as List<Map<String, dynamic>>;
+    try {
+      final natalPlanets = (_natalChartData!['planets'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      final transitPlanets = (_dailyChartData!['planets'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      final natalHouses = (_natalChartData!['houses'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      
+      print('🔍 Debug - Natal planets: ${natalPlanets.length}, Transit planets: ${transitPlanets.length}, Houses: ${natalHouses.length}');
     
-    // Find the transit planet
-    final transitPlanet = transitPlanets.firstWhere(
-      (planet) => planet['name'].toString().toLowerCase() == planetName.toLowerCase(),
-      orElse: () => {},
-    );
-    
-    if (transitPlanet.isEmpty) return '';
-    
-    final transitLongitude = transitPlanet['longitude'] as double;
-    final transitSign = _getZodiacSign(transitLongitude);
-    final transitDegrees = _getDegreesInSign(transitLongitude);
-    
-    // Find which natal house this transit is in
-    final transitHouse = _findHouseForLongitude(transitLongitude, natalHouses);
-    
-    final natalDate = _natalDateController.text;
-    final transitDate = _dailyDateController.text;
-    
-    String prompt = '''En tant qu'astrologue professionnel, veuillez fournir une interprétation détaillée du transit de $planetName pour une personne née le $natalDate, en analysant la position de $planetName le $transitDate.
+      // Find the transit planet
+      final transitPlanet = transitPlanets.firstWhere(
+        (planet) => planet['name'].toString().toLowerCase() == planetName.toLowerCase(),
+        orElse: () => <String, dynamic>{},
+      );
+      
+      if (transitPlanet.isEmpty) {
+        print('❌ Transit planet $planetName not found');
+        return '';
+      }
+      
+      final transitLongitude = (transitPlanet['longitude'] as num?)?.toDouble();
+      if (transitLongitude == null) {
+        print('❌ Transit longitude is null for $planetName');
+        return 'Erreur: longitude de transit manquante pour $planetName';
+      }
+      
+      final transitSign = _getZodiacSign(transitLongitude);
+      final transitDegrees = _getDegreesInSign(transitLongitude);
+      
+      // Find which natal house this transit is in
+      final transitHouse = _findHouseForLongitude(transitLongitude, natalHouses);
+      
+      final natalDate = _natalDateController.text;
+      final transitDate = _dailyDateController.text;
+      
+      String prompt = '''En tant qu'astrologue professionnel, veuillez fournir une interprétation détaillée du transit de $planetName pour une personne née le $natalDate, en analysant la position de $planetName le $transitDate.
 
 POSITION ACTUELLE DE $planetName EN TRANSIT:
 - $planetName: ${transitDegrees.toStringAsFixed(1)}° en $transitSign (Maison $transitHouse)
@@ -284,23 +347,25 @@ POSITION ACTUELLE DE $planetName EN TRANSIT:
 THÈME NATAL (Naissance):
 ''';
 
-    // Add natal planets with aspects to the transiting planet
-    for (var planet in natalPlanets) {
-      final name = planet['name'];
-      final longitude = planet['longitude'];
-      final sign = _getZodiacSign(longitude);
-      final degrees = _getDegreesInSign(longitude);
-      
-      // Calculate aspect between transit planet and natal planet
-      final aspect = _calculateAspect(transitLongitude, longitude);
-      if (aspect.isNotEmpty) {
-        prompt += '- $name natal: ${degrees.toStringAsFixed(1)}° $sign [$aspect avec $planetName en transit]\n';
-      } else {
-        prompt += '- $name natal: ${degrees.toStringAsFixed(1)}° $sign\n';
+      // Add natal planets with aspects to the transiting planet
+      for (var planet in natalPlanets) {
+        final name = planet['name'];
+        final longitude = (planet['longitude'] as num?)?.toDouble();
+        if (longitude == null) continue; // Skip planets with null longitude
+        
+        final sign = _getZodiacSign(longitude);
+        final degrees = _getDegreesInSign(longitude);
+        
+        // Calculate aspect between transit planet and natal planet
+        final aspect = _calculateAspect(transitLongitude, longitude);
+        if (aspect.isNotEmpty) {
+          prompt += '- $name natal: ${degrees.toStringAsFixed(1)}° $sign [$aspect avec $planetName en transit]\n';
+        } else {
+          prompt += '- $name natal: ${degrees.toStringAsFixed(1)}° $sign\n';
+        }
       }
-    }
 
-    prompt += '''
+      prompt += '''
 
 Veuillez fournir une interprétation qui inclut:
 
@@ -313,7 +378,12 @@ Veuillez fournir une interprétation qui inclut:
 
 Gardez l'interprétation accessible, pratique et bienveillante, en français.''';
 
-    return prompt;
+      return prompt;
+      
+    } catch (e) {
+      print('❌ Error building prompt for $planetName: $e');
+      return 'Erreur lors de la génération du prompt: $e';
+    }
   }
 
   String _calculateAspect(double longitude1, double longitude2) {
@@ -332,10 +402,12 @@ Gardez l'interprétation accessible, pratique et bienveillante, en français.'''
   int _findHouseForLongitude(double longitude, List<Map<String, dynamic>> houses) {
     for (int i = 0; i < houses.length; i++) {
       final house = houses[i];
-      final cusp = house['cusp'] as double;
+      final cusp = (house['cusp'] as num?)?.toDouble();
+      if (cusp == null) continue;
+      
       final nextCusp = i < houses.length - 1 
-          ? houses[i + 1]['cusp'] as double 
-          : (houses[0]['cusp'] as double) + 360;
+          ? (houses[i + 1]['cusp'] as num?)?.toDouble() ?? ((cusp) + 360)
+          : ((houses[0]['cusp'] as num?)?.toDouble() ?? 0) + 360;
       
       if (longitude >= cusp && longitude < nextCusp) {
         return i + 1;
@@ -779,10 +851,20 @@ Gardez l'interprétation accessible, pratique et bienveillante, en français.'''
                         ],
                       ),
                       const SizedBox(height: 24),
-                      // Display interpretations
-                      ..._planetInterpretations.entries.map((entry) => 
-                        _buildInterpretationCard(entry.key, entry.value)
-                      ),
+                      // Display interpretations and debug info
+                      ...['Saturn', 'Uranus', 'Neptune', 'Pluto'].map((planetName) {
+                        final hasInterpretation = _planetInterpretations.containsKey(planetName);
+                        final hasDebugInfo = _planetDebugInfo.containsKey(planetName);
+                        final isLoading = _planetLoadingStates[planetName] ?? false;
+                        
+                        if (hasInterpretation || hasDebugInfo || isLoading) {
+                          return _buildInterpretationCard(
+                            planetName, 
+                            _planetInterpretations[planetName] ?? ''
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      }),
                       const SizedBox(height: 60),
                     ],
                   ],
@@ -798,7 +880,10 @@ Gardez l'interprétation accessible, pratique et bienveillante, en français.'''
     return SizedBox(
       width: 160,
       child: ElevatedButton.icon(
-        onPressed: isLoading ? null : () => _requestPlanetTransitInterpretation(planetName),
+        onPressed: isLoading ? null : () {
+          print('🔘 Button clicked for $planetName');
+          _requestPlanetTransitInterpretation(planetName);
+        },
         icon: isLoading
             ? const SizedBox(
                 width: 20,
@@ -826,6 +911,9 @@ Gardez l'interprétation accessible, pratique et bienveillante, en français.'''
   }
 
   Widget _buildInterpretationCard(String planetName, String interpretation) {
+    final prompt = _planetPrompts[planetName] ?? '';
+    final debugInfo = _planetDebugInfo[planetName] ?? '';
+    
     return Column(
       children: [
         const SizedBox(height: 16),
@@ -851,15 +939,94 @@ Gardez l'interprétation accessible, pratique et bienveillante, en français.'''
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  interpretation,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    height: 1.6,
-                    color: Colors.black87,
+                
+                // Debug Information Section
+                if (debugInfo.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  ExpansionTile(
+                    title: const Text(
+                      '🔍 Debug Information',
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
+                    ),
+                    children: [
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: SelectableText(
+                          debugInfo,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontFamily: 'monospace',
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
+                ],
+                
+                // Prompt Section
+                if (prompt.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  ExpansionTile(
+                    title: const Text(
+                      '📝 Prompt envoyé à OpenAI',
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+                    ),
+                    children: [
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue[50],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: SelectableText(
+                          prompt,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            height: 1.4,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                
+                // Interpretation Section
+                if (interpretation.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Text(
+                    '🤖 Interprétation OpenAI',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.green[50],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: SelectableText(
+                      interpretation,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        height: 1.6,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
