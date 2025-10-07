@@ -7,6 +7,8 @@ import 'widgets/natal_wheel_widget.dart';
 import 'widgets/composite_natal_wheel_widget.dart';
 import 'services/sweph_service.dart';
 import 'services/astrology_calculation_service.dart';
+import 'openai_client.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class DailyChartPage extends StatefulWidget {
   const DailyChartPage({super.key});
@@ -39,9 +41,20 @@ class _DailyChartPageState extends State<DailyChartPage> {
   bool _isInitialized = false; // Add this
   String? _errorMessage;
 
+  // Transit interpretation state
+  Map<String, String> _planetInterpretations = {};
+  Map<String, bool> _planetLoadingStates = {
+    'Saturn': false,
+    'Uranus': false,
+    'Neptune': false,
+    'Pluto': false,
+  };
+  late OpenAIClient _openAIClient;
+
   @override
   void initState() {
     super.initState();
+    _openAIClient = OpenAIClient(dotenv.env['OPENAI_API_KEY'] ?? '');
     _initializeServices();
   }
 
@@ -203,7 +216,143 @@ class _DailyChartPageState extends State<DailyChartPage> {
       _natalChartData = null;
       _dailyChartData = null;
       _errorMessage = null;
+      _planetInterpretations.clear();
+      _planetLoadingStates = {
+        'Saturn': false,
+        'Uranus': false,
+        'Neptune': false,
+        'Pluto': false,
+      };
     });
+  }
+
+  Future<void> _requestPlanetTransitInterpretation(String planetName) async {
+    if (_natalChartData == null || _dailyChartData == null) return;
+
+    setState(() {
+      _planetLoadingStates[planetName] = true;
+    });
+
+    try {
+      // Build prompt with specific planet transit information
+      final String prompt = _buildPlanetTransitPrompt(planetName);
+      
+      final interpretation = await _openAIClient.sendMessage(prompt);
+      
+      setState(() {
+        _planetInterpretations[planetName] = interpretation;
+        _planetLoadingStates[planetName] = false;
+      });
+    } catch (e) {
+      setState(() {
+        _planetLoadingStates[planetName] = false;
+        _errorMessage = 'Failed to get $planetName interpretation: $e';
+      });
+    }
+  }
+
+  String _buildPlanetTransitPrompt(String planetName) {
+    if (_natalChartData == null || _dailyChartData == null) return '';
+
+    final natalPlanets = _natalChartData!['planets'] as List<Map<String, dynamic>>;
+    final transitPlanets = _dailyChartData!['planets'] as List<Map<String, dynamic>>;
+    final natalHouses = _natalChartData!['houses'] as List<Map<String, dynamic>>;
+    
+    // Find the transit planet
+    final transitPlanet = transitPlanets.firstWhere(
+      (planet) => planet['name'].toString().toLowerCase() == planetName.toLowerCase(),
+      orElse: () => {},
+    );
+    
+    if (transitPlanet.isEmpty) return '';
+    
+    final transitLongitude = transitPlanet['longitude'] as double;
+    final transitSign = _getZodiacSign(transitLongitude);
+    final transitDegrees = _getDegreesInSign(transitLongitude);
+    
+    // Find which natal house this transit is in
+    final transitHouse = _findHouseForLongitude(transitLongitude, natalHouses);
+    
+    final natalDate = _natalDateController.text;
+    final transitDate = _dailyDateController.text;
+    
+    String prompt = '''En tant qu'astrologue professionnel, veuillez fournir une interprétation détaillée du transit de $planetName pour une personne née le $natalDate, en analysant la position de $planetName le $transitDate.
+
+POSITION ACTUELLE DE $planetName EN TRANSIT:
+- $planetName: ${transitDegrees.toStringAsFixed(1)}° en $transitSign (Maison $transitHouse)
+
+THÈME NATAL (Naissance):
+''';
+
+    // Add natal planets with aspects to the transiting planet
+    for (var planet in natalPlanets) {
+      final name = planet['name'];
+      final longitude = planet['longitude'];
+      final sign = _getZodiacSign(longitude);
+      final degrees = _getDegreesInSign(longitude);
+      
+      // Calculate aspect between transit planet and natal planet
+      final aspect = _calculateAspect(transitLongitude, longitude);
+      if (aspect.isNotEmpty) {
+        prompt += '- $name natal: ${degrees.toStringAsFixed(1)}° $sign [$aspect avec $planetName en transit]\n';
+      } else {
+        prompt += '- $name natal: ${degrees.toStringAsFixed(1)}° $sign\n';
+      }
+    }
+
+    prompt += '''
+
+Veuillez fournir une interprétation qui inclut:
+
+1. **Signification générale**: Que représente ce transit de $planetName en $transitSign dans la Maison $transitHouse
+2. **Aspects importants**: Analysez les aspects formés avec les planètes natales
+3. **Domaines de vie activés**: Quels secteurs de vie sont influencés par cette position
+4. **Opportunités et défis**: Que peut-on attendre de positif et de difficile
+5. **Conseils pratiques**: Comment bien vivre et utiliser cette énergie
+6. **Timing**: Durée approximative et intensité de ce transit
+
+Gardez l'interprétation accessible, pratique et bienveillante, en français.''';
+
+    return prompt;
+  }
+
+  String _calculateAspect(double longitude1, double longitude2) {
+    double diff = (longitude1 - longitude2).abs();
+    if (diff > 180) diff = 360 - diff;
+    
+    if (diff <= 9) return 'Conjonction';
+    if ((diff - 60).abs() <= 8) return 'Sextile';
+    if ((diff - 90).abs() <= 9) return 'Carré';
+    if ((diff - 120).abs() <= 9) return 'Trigone';
+    if ((diff - 180).abs() <= 9) return 'Opposition';
+    
+    return '';
+  }
+
+  int _findHouseForLongitude(double longitude, List<Map<String, dynamic>> houses) {
+    for (int i = 0; i < houses.length; i++) {
+      final house = houses[i];
+      final cusp = house['cusp'] as double;
+      final nextCusp = i < houses.length - 1 
+          ? houses[i + 1]['cusp'] as double 
+          : (houses[0]['cusp'] as double) + 360;
+      
+      if (longitude >= cusp && longitude < nextCusp) {
+        return i + 1;
+      }
+    }
+    return 1; // Default to first house
+  }
+
+  String _getZodiacSign(double longitude) {
+    const signs = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 
+                   'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
+    int signIndex = (longitude / 30).floor();
+    return signs[signIndex % 12];
+  }
+
+  double _getDegreesInSign(double longitude) {
+    return longitude % 30;
   }
 
   Widget _buildNatalForm() {
@@ -607,6 +756,33 @@ class _DailyChartPageState extends State<DailyChartPage> {
                         natalChartData: _natalChartData!,
                         transitChartData: _dailyChartData!,
                       ),
+                      const SizedBox(height: 32),
+                      // Transit des planètes lentes Section
+                      const Text(
+                        'Transit des planètes lentes',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF7B2CBF),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Wrap(
+                        spacing: 16,
+                        runSpacing: 16,
+                        alignment: WrapAlignment.center,
+                        children: [
+                          _buildPlanetButton('Saturn', Icons.schedule, Color(0xFF8B4513)),
+                          _buildPlanetButton('Uranus', Icons.electric_bolt, Color(0xFF1E90FF)),
+                          _buildPlanetButton('Neptune', Icons.water_drop, Color(0xFF4169E1)),
+                          _buildPlanetButton('Pluto', Icons.transform, Color(0xFF8B008B)),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      // Display interpretations
+                      ..._planetInterpretations.entries.map((entry) => 
+                        _buildInterpretationCard(entry.key, entry.value)
+                      ),
                       const SizedBox(height: 60),
                     ],
                   ],
@@ -614,5 +790,101 @@ class _DailyChartPageState extends State<DailyChartPage> {
               ),
             ),
     );
+  }
+
+  Widget _buildPlanetButton(String planetName, IconData icon, Color color) {
+    final isLoading = _planetLoadingStates[planetName] ?? false;
+    
+    return SizedBox(
+      width: 160,
+      child: ElevatedButton.icon(
+        onPressed: isLoading ? null : () => _requestPlanetTransitInterpretation(planetName),
+        icon: isLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Icon(icon),
+        label: Text(
+          isLoading ? 'Analyse...' : '$planetName en transit',
+          style: const TextStyle(fontSize: 13),
+        ),
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(
+            vertical: 12,
+            horizontal: 16,
+          ),
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInterpretationCard(String planetName, String interpretation) {
+    return Column(
+      children: [
+        const SizedBox(height: 16),
+        Card(
+          margin: EdgeInsets.zero,
+          elevation: 4,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(_getPlanetIcon(planetName), color: _getPlanetColor(planetName)),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Transit de $planetName',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: _getPlanetColor(planetName),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  interpretation,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    height: 1.6,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  IconData _getPlanetIcon(String planetName) {
+    switch (planetName) {
+      case 'Saturn': return Icons.schedule;
+      case 'Uranus': return Icons.electric_bolt;
+      case 'Neptune': return Icons.water_drop;
+      case 'Pluto': return Icons.transform;
+      default: return Icons.circle;
+    }
+  }
+
+  Color _getPlanetColor(String planetName) {
+    switch (planetName) {
+      case 'Saturn': return const Color(0xFF8B4513);
+      case 'Uranus': return const Color(0xFF1E90FF);
+      case 'Neptune': return const Color(0xFF4169E1);
+      case 'Pluto': return const Color(0xFF8B008B);
+      default: return const Color(0xFF7B2CBF);
+    }
   }
 }

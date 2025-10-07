@@ -224,8 +224,8 @@ class NatalWheelPainter extends CustomPainter {
     canvas.drawCircle(center, radius + 20, outerCirclePaint); // Adjusted outer circle for new spacing
 
     final houses = (chartData['houses'] is List) ? chartData['houses'] as List : [];
-    // Use fixed orientation: 0° Aries at 9 o'clock (horizontal left)
-    final ascDegree = 0.0;
+    // Use the actual Ascendant degree from chart data, not fixed 0°
+    final ascDegree = chartData['ascendant'] as double? ?? 0.0;
 
     // Zodiac radii (inner)
     final zodiacRadiusOuter = radius - 5;
@@ -862,6 +862,15 @@ class NatalWheelPainter extends CustomPainter {
     }
     if (chartData['ascendant'] != null) {
       planetDegrees['Ascendant'] = (chartData['ascendant'] as num).toDouble();
+    }
+    if (chartData['mc'] != null) {
+      planetDegrees['Midheaven'] = (chartData['mc'] as num).toDouble();
+    }
+    if (chartData['descendant'] != null) {
+      planetDegrees['Descendant'] = (chartData['descendant'] as num).toDouble();
+    }
+    if (chartData['imum_coeli'] != null) {
+      planetDegrees['Imum Coeli'] = (chartData['imum_coeli'] as num).toDouble();
     }
 
     // Draw aspects from chartData['aspectsData'] if present - now in the middle

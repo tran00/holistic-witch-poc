@@ -64,8 +64,8 @@ class TransitOverlayPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = min(size.width, size.height) / 2 - 0;
     
-    // Use 0 degrees (Aries 0°) at 9 o'clock position instead of natal ascendant
-    final ascDegree = 0.0; // This makes 0° Aries point to 9 o'clock (horizontal left)
+    // Use the actual Ascendant degree from natal chart data for proper orientation
+    final ascDegree = natalChartData['ascendant'] as double? ?? 0.0;
     
     _drawTransitCircle(canvas, center, radius);
     _drawTransitPlanets(canvas, center, radius + 20, ascDegree);
