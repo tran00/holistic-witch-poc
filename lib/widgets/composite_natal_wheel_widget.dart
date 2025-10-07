@@ -94,6 +94,16 @@ class TransitOverlayPainter extends CustomPainter {
         final planetName = planet['name'] as String?;
         final longitude = (planet['longitude'] ?? planet['full_degree']) as num?;
         
+        // Skip North and South Node for transit display
+        if (planetName != null && (
+            planetName.toLowerCase().contains('node') ||
+            planetName.toLowerCase().contains('noeud') ||
+            planetName == 'North Node' ||
+            planetName == 'South Node'
+        )) {
+          continue;
+        }
+        
         if (planetName != null && longitude != null) {
           final planetDegree = longitude.toDouble();
           final angle = (-pi) - (planetDegree - ascDegree) * pi / 180;

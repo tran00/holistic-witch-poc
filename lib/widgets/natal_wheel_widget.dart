@@ -551,6 +551,13 @@ class NatalWheelPainter extends CustomPainter {
           continue;
         }
 
+        // Skip South Node from natal chart display
+        if (planetName == 'South Node' || 
+            planetName == 'Noeud Sud' ||
+            planetName.toLowerCase().contains('south node')) {
+          continue;
+        }
+
         // Try multiple ways to find the glyph
         String glyph = planetGlyphs[planetName] ?? 
                        planetGlyphs[shortName] ?? 
@@ -706,6 +713,13 @@ class NatalWheelPainter extends CustomPainter {
         if (planetName == 'Ascendant' || planetName == 'Midheaven') {
           continue;
         }
+
+        // Skip South Node lines
+        if (planetName == 'South Node' || 
+            planetName == 'Noeud Sud' ||
+            planetName.toLowerCase().contains('south node')) {
+          continue;
+        }
         
         final deg = (planet['longitude'] ?? planet['full_degree'] ?? 0).toDouble();
         final angle = (-pi) - (deg - ascDegree) * pi / 180; // Rotated base
@@ -745,6 +759,13 @@ class NatalWheelPainter extends CustomPainter {
           
           // Skip Ascendant and Midheaven lines as they're drawn separately
           if (planetName == 'Ascendant' || planetName == 'Midheaven') {
+            continue;
+          }
+
+          // Skip South Node lines
+          if (planetName == 'South Node' || 
+              planetName == 'Noeud Sud' ||
+              planetName.toLowerCase().contains('south node')) {
             continue;
           }
           
