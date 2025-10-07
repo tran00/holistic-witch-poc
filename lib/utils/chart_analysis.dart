@@ -121,24 +121,111 @@ class ChartAnalysis {
     return modeCount;
   }
 
-  /// Detect major aspects
-  static List<String> calculateAspects(Map<String, dynamic> chartData) {
-    List planets = chartData["planets"];
-    List<String> aspects = [];
+  /// Calculate aspects and return raw data
+  static List<Map<String, dynamic>> calculateAspectsData(Map<String, dynamic> chartData) {
+    // Handle both Map and List format for planets
+    List<Map<String, dynamic>> planetsList = [];
+    
+    final planets = chartData["planets"];
+    if (planets is Map) {
+      // Convert Map to List
+      planetsList = planets.values.cast<Map<String, dynamic>>().toList();
+    } else if (planets is List) {
+      planetsList = planets.cast<Map<String, dynamic>>();
+    } else {
+      return []; // No planets data
+    }
 
-    for (int i = 0; i < planets.length; i++) {
-      for (int j = i + 1; j < planets.length; j++) {
-        double diff = (planets[i]["full_degree"] - planets[j]["full_degree"]).abs();
+    // Add angles (Ascendant, Midheaven, etc.) to the planets list for aspect calculations
+    final angles = [
+      {"name": "Ascendant", "longitude": chartData["ascendant"]},
+      {"name": "Midheaven", "longitude": chartData["mc"]},
+      // Optional: Add Descendant and IC as well
+      // {"name": "Descendant", "longitude": chartData["descendant"]},
+      // {"name": "Imum Coeli", "longitude": chartData["imum_coeli"]},
+    ];
+    
+    for (final angle in angles) {
+      if (angle["longitude"] != null) {
+        planetsList.add(angle);
+      }
+    }
+
+    List<Map<String, dynamic>> aspectsWithInfo = [];
+
+    for (int i = 0; i < planetsList.length; i++) {
+      for (int j = i + 1; j < planetsList.length; j++) {
+        final planet1 = planetsList[i];
+        final planet2 = planetsList[j];
+        
+        // Safely get full_degree with fallback to longitude
+        final degree1 = (planet1["full_degree"] ?? planet1["longitude"]) as double?;
+        final degree2 = (planet2["full_degree"] ?? planet2["longitude"]) as double?;
+        
+        if (degree1 == null || degree2 == null) continue;
+        
+        double diff = (degree1 - degree2).abs();
         diff = diff > 180 ? 360 - diff : diff; // minimal angle
-        final aspect = _checkAspect(diff);
-        if (aspect != null) {
-          aspects.add("${planets[i]["name"]} $aspect ${planets[j]["name"]} "
-              "(Δ ${diff.toStringAsFixed(1)}°)");
+        
+        // Debug: Print angle differences to check for trines
+        print('Checking ${planet1["name"]} vs ${planet2["name"]}: angle difference = $diff°');
+        
+        final aspectInfo = _checkAspectWithOrb(diff);
+        if (aspectInfo != null) {
+          // Skip aspects involving North Node
+          final planet1Name = planet1["name"] ?? 'Unknown';
+          final planet2Name = planet2["name"] ?? 'Unknown';
+          if (planet1Name == 'North Node' || planet2Name == 'North Node') {
+            continue; // Skip this aspect
+          }
+          
+          aspectsWithInfo.add({
+            'planet1': planet1Name,
+            'planet2': planet2Name,
+            'aspectName': aspectInfo['name'],
+            'angle': diff,
+            'orb': aspectInfo['orb'],
+            'exactAngle': aspectInfo['exactAngle'],
+            // Add compatibility fields for the natal wheel widget
+            'aspecting_planet': planet1Name,
+            'aspected_planet': planet2Name,
+            'type': aspectInfo['name'],
+          });
         }
       }
     }
 
-    return aspects;
+    // Sort by aspect name alphabetically, then by orb within each aspect type
+    aspectsWithInfo.sort((a, b) {
+      int aspectComparison = a['aspectName'].compareTo(b['aspectName']);
+      if (aspectComparison != 0) {
+        return aspectComparison;
+      }
+      // If same aspect type, sort by orb (tightest first)
+      return a['orb'].compareTo(b['orb']);
+    });
+
+    // Store the full aspect data in chartData for the natal wheel widget
+    chartData['aspectsData'] = aspectsWithInfo;
+
+    return aspectsWithInfo;
+  }
+
+  /// Format aspects data as strings for display (simple format)
+  static List<String> formatAspectsAsStrings(List<Map<String, dynamic>> aspectsData) {
+    return aspectsData.map((aspect) {
+      final orbDegrees = aspect['orb'] as double;
+      final orbMinutes = ((orbDegrees % 1) * 60).round();
+      final orbFormatted = "${orbDegrees.floor()}°${orbMinutes.toString().padLeft(2, '0')}'";
+      
+      return "${aspect['planet1']} ${aspect['aspectName']} ${aspect['planet2']} - Orb: $orbFormatted";
+    }).toList();
+  }
+
+  /// Detect major aspects (legacy function for backward compatibility)
+  static List<String> calculateAspects(Map<String, dynamic> chartData) {
+    final aspectsData = calculateAspectsData(chartData);
+    return formatAspectsAsStrings(aspectsData);
   }
 
   /// Determine Moon phase
@@ -316,13 +403,43 @@ class ChartAnalysis {
     return "$deg°$min′";
   }
 
-  /// Helper: detect aspect
-  static String? _checkAspect(double d) {
-    if ((d - 0).abs() <= 8 || (d - 360).abs() <= 8) return "Conjunction";
-    if ((d - 60).abs() <= 6) return "Sextile";
-    if ((d - 90).abs() <= 6) return "Square";
-    if ((d - 120).abs() <= 8) return "Trine";
-    if ((d - 180).abs() <= 8) return "Opposition";
+  /// Helper: detect aspect with orb calculation
+  static Map<String, dynamic>? _checkAspectWithOrb(double d) {
+    const aspects = [
+      {'name': 'Conjunction', 'exactAngle': 0.0, 'orb': 8.5},
+      {'name': 'Sextile', 'exactAngle': 60.0, 'orb': 8.5},
+      {'name': 'Square', 'exactAngle': 90.0, 'orb': 8.5},
+      {'name': 'Trine', 'exactAngle': 120.0, 'orb': 8.5},
+      {'name': 'Opposition', 'exactAngle': 180.0, 'orb': 8.5},
+    ];
+
+    for (final aspect in aspects) {
+      final exactAngle = aspect['exactAngle'] as double;
+      final maxOrb = aspect['orb'] as double;
+      
+      // Check for conjunction (special case for 0° and 360°)
+      if (exactAngle == 0.0) {
+        if (d <= maxOrb || (360 - d) <= maxOrb) {
+          final actualOrb = d <= maxOrb ? d : 360 - d;
+          return {
+            'name': aspect['name'],
+            'orb': actualOrb,
+            'exactAngle': exactAngle,
+          };
+        }
+      } else {
+        // Check other aspects
+        final orbDifference = (d - exactAngle).abs();
+        if (orbDifference <= maxOrb) {
+          return {
+            'name': aspect['name'],
+            'orb': orbDifference,
+            'exactAngle': exactAngle,
+          };
+        }
+      }
+    }
+    
     return null;
   }
 }

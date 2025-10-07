@@ -39,9 +39,13 @@ class OpenAIClient {
         "model": dotenv.env['OPENAI_CHAT_MODEL'] ?? dotenv.env['OPENAI_FALLBACK_CHAT_MODEL'],
         "messages": [
           {"role": "user", "content": prompt}
-        ]
+        ],
+        // Add these optimizations for faster responses
+        "max_tokens": 500,  // Limit response length
+        "temperature": 0.7,  // Lower temperature can be slightly faster
+        "stream": false,  // Ensure we're not streaming
       }),
-    );
+    ).timeout(const Duration(seconds: 30)); // Add timeout
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);

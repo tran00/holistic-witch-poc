@@ -762,6 +762,14 @@ class NatalWheelPainter extends CustomPainter {
 
         for (int j = i + 1; j < planets.length; j++) {
           final p2 = planets[j];
+          
+          // Skip aspects involving North Node
+          final p1Name = p1['name'] ?? '';
+          final p2Name = p2['name'] ?? '';
+          if (p1Name == 'North Node' || p2Name == 'North Node') {
+            continue; // Skip this aspect
+          }
+          
           final deg2 = (p2['longitude'] ?? p2['full_degree'] ?? 0).toDouble();
           final angle2 = (-pi) - (deg2 - ascDegree) * pi / 180; // Rotated base
           final p2x = center.dx + aspectRadius * cos(angle2);
@@ -806,9 +814,9 @@ class NatalWheelPainter extends CustomPainter {
       planetDegrees['Ascendant'] = (chartData['ascendant'] as num).toDouble();
     }
 
-    // Draw aspects from chartData['aspects'] if present - now in the middle
-    if (chartData['aspects'] is List) {
-      final aspects = chartData['aspects'] as List;
+    // Draw aspects from chartData['aspectsData'] if present - now in the middle
+    if (chartData['aspectsData'] is List) {
+      final aspects = chartData['aspectsData'] as List;
       final aspectRadius = radius - 60; // Smaller radius for middle circle
 
       for (final aspect in aspects) {

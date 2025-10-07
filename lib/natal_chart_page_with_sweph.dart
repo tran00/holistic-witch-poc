@@ -1211,6 +1211,19 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
               ),
             ),
           ),
+
+        const SizedBox(height: 20),
+
+        // Aspects section
+        const SelectableText(
+          'Planetary Aspects',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
+        if (_chartData != null) ...[
+          // Aspects table
+          _buildAspectsTable(),
+        ],
       ],
     );
   }
@@ -1225,5 +1238,70 @@ class _NatalChartPageWithSwephState extends State<NatalChartPageWithSweph> {
     _cityController.dispose();
     _promptController.dispose(); // Add this
     super.dispose();
+  }
+
+  Widget _buildAspectsTable() {
+    // Try to use cached aspects data first, otherwise calculate fresh
+    List<Map<String, dynamic>> aspectsData;
+    if (_chartData!['aspectsData'] != null) {
+      aspectsData = _chartData!['aspectsData'] as List<Map<String, dynamic>>;
+    } else {
+      aspectsData = ChartAnalysis.calculateAspectsData(_chartData!);
+    }
+    
+    if (aspectsData.isEmpty) {
+      return const Text('No aspects found');
+    }
+
+    return Table(
+      border: TableBorder.all(color: const Color.fromARGB(0, 224, 224, 224), width: 0),
+      columnWidths: const {
+        0: FlexColumnWidth(0.2), // Planet 1
+        1: FlexColumnWidth(0.3), // Aspect
+        2: FlexColumnWidth(0.3), // Planet 2
+        3: FlexColumnWidth(0.6), // Orb (smaller since it's shorter)
+      },
+      children: [
+        // Data rows
+        ...aspectsData.map((aspect) {
+          final orbDegrees = aspect['orb'] as double;
+          final orbMinutes = ((orbDegrees % 1) * 60).round();
+          final orbFormatted = "${orbDegrees.floor()}°${orbMinutes.toString().padLeft(1, '0')}'";
+          
+          return TableRow(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(3.0),
+                child: Text(
+                  aspect['planet1'],
+                  textAlign: TextAlign.left,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(3.0),
+                child: Text(
+                  aspect['aspectName'],
+                  textAlign: TextAlign.left,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(3.0),
+                child: Text(
+                  aspect['planet2'],
+                  textAlign: TextAlign.left,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(3.0),
+                child: Text(
+                  orbFormatted,
+                  textAlign: TextAlign.left,
+                ),
+              ),
+            ],
+          );
+        }).toList(),
+      ],
+    );
   }
 }

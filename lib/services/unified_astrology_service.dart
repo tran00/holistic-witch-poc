@@ -1,5 +1,6 @@
 import 'package:sweph/sweph.dart';
 import '../utils/astrology_utils.dart';
+import '../utils/chart_analysis.dart';
 import '../services/geocoding_service.dart';
 import 'package:timezone/timezone.dart' as tz;
 
@@ -133,11 +134,13 @@ class UnifiedAstrologyService {
       'julianDay': julianDay,
       'planets': <String, dynamic>{},
       'houses': <String, dynamic>{},
+      'aspects': <String, dynamic>{},
     };
     await _calculatePlanets(julianDay, chartData);
     await _calculateHouses(julianDay, latitude, longitude, chartData);
     AstrologyUtils.groupPlanetsIntoHouses(chartData);
     AstrologyUtils.convertChartDataToWheelFormat(chartData);
+    chartData['aspects'] = ChartAnalysis.calculateAspects(chartData);
     return chartData;
   }
 

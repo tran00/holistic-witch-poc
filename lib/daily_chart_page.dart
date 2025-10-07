@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'widgets/app_drawer.dart';
 import 'widgets/natal_wheel_widget.dart';
+import 'widgets/composite_natal_wheel_widget.dart';
 import 'services/sweph_service.dart';
 import 'services/astrology_calculation_service.dart';
 
@@ -550,6 +551,45 @@ class _DailyChartPageState extends State<DailyChartPage> {
                       ),
                       const SizedBox(height: 16),
                       NatalWheel(chartData: _dailyChartData!),
+                    ],
+                    if (_natalChartData != null && _dailyChartData != null) ...[
+                      const SizedBox(height: 24),
+                      const Text(
+                        'Composite Chart (Natal + Daily Transits)',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.purple),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 12,
+                            height: 12,
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Text('Natal Planets', style: TextStyle(fontSize: 12)),
+                          const SizedBox(width: 16),
+                          Container(
+                            width: 12,
+                            height: 12,
+                            decoration: const BoxDecoration(
+                              color: Colors.blue,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Text('Transit Planets', style: TextStyle(fontSize: 12)),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      CompositeNatalWheel(
+                        natalChartData: _natalChartData!,
+                        transitChartData: _dailyChartData!,
+                      ),
                     ],
                   ],
                 ),
