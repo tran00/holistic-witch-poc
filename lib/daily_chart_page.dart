@@ -553,12 +553,12 @@ class _DailyChartPageState extends State<DailyChartPage> {
                       NatalWheel(chartData: _dailyChartData!),
                     ],
                     if (_natalChartData != null && _dailyChartData != null) ...[
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 40),
                       const Text(
                         'Composite Chart (Natal + Daily Transits)',
                         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.purple),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 20),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -585,11 +585,12 @@ class _DailyChartPageState extends State<DailyChartPage> {
                           const Text('Transit Planets', style: TextStyle(fontSize: 12)),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 60),
                       CompositeNatalWheel(
                         natalChartData: _natalChartData!,
                         transitChartData: _dailyChartData!,
                       ),
+                      const SizedBox(height: 60),
                     ],
                   ],
                 ),

@@ -30,16 +30,18 @@ class CompositeNatalWheel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 450,
-      height: 450,
-      child: Center(
+    return Center(
+      child: SizedBox(
+        width: 450,
+        height: 450,
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // Base natal chart (exactly the same as NatalWheel)
-            NatalWheel(chartData: natalChartData),
-            // Overlay transit planets
+            SizedBox(
+              width: 450,
+              height: 450,
+              child: NatalWheel(chartData: natalChartData),
+            ),
             CustomPaint(
               painter: TransitOverlayPainter(natalChartData, transitChartData),
               size: const Size(450, 450),
@@ -60,16 +62,10 @@ class TransitOverlayPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = min(size.width, size.height) / 2 - 20;
-
-    // Get ascendant from natal chart for orientation
+    final radius = min(size.width, size.height) / 2 - 0;
     final ascDegree = (natalChartData['ascendant'] as num?)?.toDouble() ?? 0.0;
-
-    // Draw outer circle for transits
     _drawTransitCircle(canvas, center, radius);
-    
-    // Draw transit planets outside the natal chart's outer circle
-    _drawTransitPlanets(canvas, center, radius + 10, ascDegree);
+    _drawTransitPlanets(canvas, center, radius + 20, ascDegree);
   }
 
   void _drawTransitCircle(Canvas canvas, Offset center, double radius) {
@@ -77,16 +73,14 @@ class TransitOverlayPainter extends CustomPainter {
       ..color = Colors.blue.withOpacity(0.4)
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
-
-    // Outer circle for transits (beyond the natal chart)
-    canvas.drawCircle(center, radius + 10, paint);
+    canvas.drawCircle(center, radius, paint);
   }
 
   void _drawTransitPlanets(Canvas canvas, Offset center, double radius, double ascDegree) {
     if (transitChartData['planets'] is List) {
       final planets = transitChartData['planets'] as List;
-      final transitRadius = radius + 25; // Position outside the natal chart's outer circle
-      final outerCircleRadius = radius; // The outer circle radius
+      final transitRadius = radius + 25;
+      final outerCircleRadius = radius - 20;
       
       final textPainter = TextPainter(
         textAlign: TextAlign.center,
@@ -99,52 +93,46 @@ class TransitOverlayPainter extends CustomPainter {
         
         if (planetName != null && longitude != null) {
           final planetDegree = longitude.toDouble();
-          final angle = (-pi/2) - ((planetDegree - ascDegree) * pi / 180);
+          final angle = (-pi) - (planetDegree - ascDegree) * pi / 180;
           
-          // Planet position
           final planetX = center.dx + transitRadius * cos(angle);
           final planetY = center.dy + transitRadius * sin(angle);
-          
-          // Outer circle intersection point
           final outerX = center.dx + outerCircleRadius * cos(angle);
           final outerY = center.dy + outerCircleRadius * sin(angle);
 
-          // Draw line from planet to outer circle
+          // Calculate line start point at a distance from the planet glyph
+          final glyphRadius = -18; // Distance from planet center to start the line
+          final lineStartX = center.dx + (transitRadius + glyphRadius) * cos(angle);
+          final lineStartY = center.dy + (transitRadius + glyphRadius) * sin(angle);
+
           final linePaint = Paint()
             ..color = Colors.blue.withOpacity(0.6)
             ..strokeWidth = 1.5;
           
-          canvas.drawLine(
-            Offset(planetX, planetY),
-            Offset(outerX, outerY),
-            linePaint,
-          );
+          canvas.drawLine(Offset(lineStartX, lineStartY), Offset(outerX, outerY), linePaint);
 
-          // Get planet glyph
           final glyph = planetGlyphs[planetName] ?? planetName.substring(0, 2);
           
-          // Draw background circle for better visibility
-          canvas.drawCircle(
-            Offset(planetX, planetY), 
-            14, 
-            Paint()..color = Colors.white.withOpacity(0.9)
-          );
+          // canvas.drawCircle(
+          //   Offset(planetX, planetY), 
+          //   14, 
+          //   Paint()..color = Colors.white.withOpacity(0.9)
+          // );
           
-          // Draw border around background
-          canvas.drawCircle(
-            Offset(planetX, planetY), 
-            14, 
-            Paint()
-              ..color = Colors.blue
-              ..strokeWidth = 1.5
-              ..style = PaintingStyle.stroke
-          );
+          // canvas.drawCircle(
+          //   Offset(planetX, planetY), 
+          //   14, 
+          //   Paint()
+          //     ..color = Colors.blue
+          //     ..strokeWidth = 1.5
+          //     ..style = PaintingStyle.stroke
+          // );
           
           textPainter.text = TextSpan(
             text: glyph,
             style: const TextStyle(
-              fontSize: 18, 
-              color: Colors.blue,
+              fontSize: 20, 
+              color: Colors.black,
               fontWeight: FontWeight.bold,
             ),
           );
