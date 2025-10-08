@@ -6,8 +6,9 @@ import 'widgets/app_drawer.dart';
 import 'widgets/natal_wheel_widget.dart';
 import 'widgets/composite_natal_wheel_widget.dart';
 import 'services/sweph_service.dart';
-import 'services/astrology_calculation_service.dart';
+import 'services/unified_astrology_service.dart';  // Use the same service as natal_chart_page_with_sweph
 import 'rag_service_singleton.dart';
+import 'package:timezone/data/latest.dart' as tz_data;
 
 class DailyChartPage extends StatefulWidget {
   const DailyChartPage({super.key});
@@ -67,7 +68,12 @@ class _DailyChartPageState extends State<DailyChartPage> {
   // Add this method
   Future<void> _initializeServices() async {
     try {
-      await SwephService.initialize();
+      // Initialize timezone data first (same as natal_chart_page_with_sweph)
+      tz_data.initializeTimeZones();
+      print('✅ Timezone database initialized');
+      
+      // Then initialize UnifiedAstrologyService
+      await UnifiedAstrologyService.initialize();  // Use the same service we're using for calculations
       setState(() {
         _isInitialized = true;
       });
@@ -80,10 +86,10 @@ class _DailyChartPageState extends State<DailyChartPage> {
   }
 
   void _initializeWithDefaults() {
-    // Default natal data
-    _natalNameController.text = 'John Doe';
-    _natalDateController.text = '15/05/1990';  // Changed to DD/MM/YYYY
-    _natalTimeController.text = '14:30';
+    // Default natal data - use same defaults as natal_chart_page_with_sweph
+    _natalNameController.text = 'Sample Chart';
+    _natalDateController.text = '08/05/1980';  // Same as natal_chart_page_with_sweph default
+    _natalTimeController.text = '04:35';
     _natalLocationController.text = 'Paris, France';
     _natalLatitudeController.text = '48.8848';
     _natalLongitudeController.text = '2.2674';
@@ -179,7 +185,15 @@ class _DailyChartPageState extends State<DailyChartPage> {
 
       // Generate natal chart
       print('Generating natal chart...');
-      final natalData = await AstrologyCalculationService.calculateChart(
+      print('🔍 Debug - Natal chart input data:');
+      print('  Name: ${_natalNameController.text}');
+      print('  Date: ${_natalDateController.text}');
+      print('  Time: ${_natalTimeController.text}');
+      print('  Lat: ${_natalLatitudeController.text}');
+      print('  Long: ${_natalLongitudeController.text}');
+      print('  Location: ${_natalLocationController.text}');
+      
+      final natalData = await UnifiedAstrologyService.calculateChartFromUserInput(
         name: _natalNameController.text,
         date: _natalDateController.text,
         time: _natalTimeController.text,
@@ -187,10 +201,19 @@ class _DailyChartPageState extends State<DailyChartPage> {
         long: _natalLongitudeController.text,
         location: _natalLocationController.text,
       );
+      
+      print('🔍 Debug - Generated natal chart data preview:');
+      print('  Julian Day: ${natalData['julianDay']}');
+      print('  Planets count: ${(natalData['planets'] as List?)?.length ?? 0}');
+      print('  Houses count: ${(natalData['houses'] as List?)?.length ?? 0}');
+      if (natalData['planets'] != null && (natalData['planets'] as List).isNotEmpty) {
+        final firstPlanet = (natalData['planets'] as List)[0];
+        print('  First planet: ${firstPlanet['name']} at ${firstPlanet['longitude']}° in ${firstPlanet['sign']}');
+      }
 
       // Generate daily chart
       print('Generating daily chart...');
-      final dailyData = await AstrologyCalculationService.calculateChart(
+      final dailyData = await UnifiedAstrologyService.calculateChartFromUserInput(
         name: 'Daily Chart - ${_dailyDateController.text}',
         date: _dailyDateController.text,
         time: _dailyTimeController.text,
@@ -989,7 +1012,7 @@ Gardez l'interprétation accessible, pratique et bienveillante, en français.'''
                         natalChartData: _natalChartData!,
                         transitChartData: _dailyChartData!,
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 122),
                       // Transit des planètes lentes Section
                       const Text(
                         'Transit des planètes lentes',
