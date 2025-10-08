@@ -268,14 +268,74 @@ class _DailyChartPageState extends State<DailyChartPage> {
 
       print('🚀 Sending query for $planetName to RAG service...');
       
+      // ==================================================================
+      // Option 1: Current approach (keeps everything as-is)
       // Use RAG service with astrology context filter
-      final ragResponse = await ragService.askQuestion(
-        prompt,
-        systemPrompt: "Tu es un astrologue professionnel expert en transits planétaires. Réponds en français de manière détaillée et bienveillante en t'appuyant sur le contexte astrologique fourni.",
-        contextFilter: 'astrologie', // Filter for astrology-related content
-        topK: 8, // Get more relevant sources
-        scoreThreshold: 0.4, // Lower threshold for more context
+//       final ragResponse = await ragService.askQuestion(
+//         prompt,
+//         systemPrompt: """Tu es un astrologue professionnel expert en transits planétaires. Réponds en français de manière détaillée et bienveillante en t'appuyant sur le contexte astrologique fourni.
+
+// Raconte le transit comme une épopée intérieure. Chaque planète est un guide, chaque maison un sanctuaire, chaque aspect un dialogue. Utilise des métaphores, un ton inspiré et une narration fluide, comme si tu t'adressais à l'âme du consultant.""",
+//         contextFilter: 'astrologie', // Filter for astrology-related content
+//         topK: 8, // Get more relevant sources
+//         scoreThreshold: 0.4, // Lower threshold for more context
+//       );
+      
+      // ==================================================================
+      // Option 2: Optimized approach (now active)
+      
+      late final Map<String, dynamic> ragResponse;
+      
+      // Get transit planet info for short query
+      final natalPlanets = (_natalChartData!['planets'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      final transitPlanets = (_dailyChartData!['planets'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      final dailyHouses = (_dailyChartData!['houses'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      
+      final englishPlanetName = _getEnglishPlanetName(planetName);
+      final transitPlanet = transitPlanets.firstWhere(
+        (planet) => planet['name'].toString().toLowerCase() == englishPlanetName.toLowerCase(),
+        orElse: () => <String, dynamic>{},
       );
+      
+      if (transitPlanet.isNotEmpty) {
+        final transitLongitude = (transitPlanet['longitude'] as num?)?.toDouble();
+        if (transitLongitude != null) {
+          // Step 1: Data gathering with short, focused query (saves tokens)
+          final transitSign = _getZodiacSign(transitLongitude);
+          final transitHouse = _findHouseForLongitude(transitLongitude, dailyHouses);
+          final shortQuery = "transit $planetName $transitSign maison $transitHouse aspects planétaires";
+          
+          print('📊 Short query for data gathering: "$shortQuery"');
+          
+          final ragData = await ragService.performRagQuery(
+            shortQuery,
+            contextFilter: 'astrologie',
+            topK: 8,
+            scoreThreshold: 0.4,
+          );
+          
+          // Step 2: Generate response with full context + detailed prompt + poetic tone
+          final context = ragData['context'] as String;
+          final interpretation = await ragService.generateContextualResponse(
+            prompt, // Your detailed transit prompt
+            context,
+            systemPrompt: """Tu es un astrologue professionnel expert en transits planétaires. Réponds en français de manière détaillée et bienveillante en t'appuyant sur le contexte astrologique fourni.
+
+Raconte le transit comme une épopée intérieure. Chaque planète est un guide, chaque maison un sanctuaire, chaque aspect un dialogue. Utilise des métaphores, un ton inspiré et une narration fluide, comme si tu t'adressais à l'âme du consultant.""",
+          );
+          
+          ragResponse = {
+            'answer': interpretation,
+            'sources': ragData['results'],
+            'context_used': context,
+          };
+        } else {
+          throw Exception('Transit longitude is null for $planetName');
+        }
+      } else {
+        throw Exception('Transit planet not found for $planetName');
+      }
+      
       
       final interpretation = ragResponse['answer'] as String;
       final sources = ragResponse['sources'] as List;

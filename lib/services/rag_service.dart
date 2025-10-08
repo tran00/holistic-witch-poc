@@ -402,7 +402,7 @@ class RagService {
       // Log retrieved content details
       for (int i = 0; i < results.length; i++) {
         final doc = results[i];
-        print('📚 Document $i: id=${doc['id']}, chunk_id=${doc['chunk_id']}, title=${doc['title'] ?? 'N/A'}, content_length=${(doc['content'] ?? doc['text'] ?? '').toString().length}');
+        // print('📚 Document $i: id=${doc['id']}, chunk_id=${doc['chunk_id']}, title=${doc['title'] ?? 'N/A'}, content_length=${(doc['content'] ?? doc['text'] ?? '').toString().length}');
       }
       
       return results;
@@ -483,14 +483,14 @@ class RagService {
       for (int i = 0; i < similarVectors.length; i++) {
         final vector = similarVectors[i];
         final contentId = vector['metadata']?['chunk_id']?.toString();
-        print('🔗 Processing vector $i: contentId=$contentId, score=${vector['score']}');
+        // print('🔗 Processing vector $i: contentId=$contentId, score=${vector['score']}');
         // Find corresponding content by chunk_id
         final content = contentResults.firstWhere(
           (c) => c['chunk_id'].toString() == contentId,
           orElse: () => <String, dynamic>{},
         );
         if (content.isNotEmpty) {
-          print('✅ Content found for chunk_id $contentId');
+          // print('✅ Content found for chunk_id $contentId');
           enrichedResults.add({
             'score': vector['score'],
             'metadata': vector['metadata'],
@@ -590,7 +590,7 @@ class RagService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        print('🤖 OpenAI response data: ${jsonEncode(data)}');
+        // print('🤖 OpenAI response data: ${jsonEncode(data)}');
         
         if (data['choices'] == null || data['choices'].isEmpty) {
           print('❌ OpenAI response has no choices');
