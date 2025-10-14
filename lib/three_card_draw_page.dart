@@ -3,7 +3,7 @@ import 'services/tarot_service.dart';
 import 'mixins/tarot_page_mixin.dart';
 import 'widgets/app_drawer.dart';
 import 'rag_service_singleton.dart';
-import 'services/prompt_service.dart';
+import 'services/three_card_prompt_service.dart';
 import 'widgets/selectable_read_more.dart';
 // import 'widgets/reveal_tarot_card.dart'; // Add this if missing
 
@@ -28,7 +28,7 @@ import 'widgets/selectable_read_more.dart';
       lastSystemPrompt = null;
     });
     try {
-      final prompt = PromptService.buildThreeCardCustomPrompt(
+      final prompt = ThreeCardPromptService.buildThreeCardCustomPrompt(
         question.isEmpty ? "Donne-moi une interprétation générale de ce tirage de trois cartes." : question, 
         drawnCards!
       );
@@ -164,10 +164,10 @@ import 'widgets/selectable_read_more.dart';
       });
       try {
         // Use template for vector search prompt (simpler, focused on retrieval)
-        final vectorSearchPrompt = PromptService.buildThreeCardVectorSearchPrompt(drawnCards!);
+        final vectorSearchPrompt = ThreeCardPromptService.buildThreeCardVectorSearchPrompt(drawnCards!);
         
         // Use template for final OpenAI response prompt (includes tone instructions)
-        final finalSystemPrompt = PromptService.buildThreeCardRagPrompt(
+        final finalSystemPrompt = ThreeCardPromptService.buildThreeCardRagPrompt(
           drawnCards: drawnCards!,
           // You can pass custom tone instructions here if needed:
           // customToneInstructions: """INSTRUCTIONS DE STYLE :
@@ -228,10 +228,10 @@ import 'widgets/selectable_read_more.dart';
       });
       try {
         // Use vector search prompt that includes bonus cards
-        final vectorSearchPrompt = PromptService.buildThreeCardVectorSearchPrompt(drawnCards!, bonusCards: bonusCards!);
+        final vectorSearchPrompt = ThreeCardPromptService.buildThreeCardVectorSearchPrompt(drawnCards!, bonusCards: bonusCards!);
         
         // Use the same template but with bonus cards as additional advice
-        final finalSystemPrompt = PromptService.buildThreeCardRagPrompt(
+        final finalSystemPrompt = ThreeCardPromptService.buildThreeCardRagPrompt(
           drawnCards: drawnCards!,
           bonusCards: bonusCards!, // Add bonus cards to the prompt
         );
