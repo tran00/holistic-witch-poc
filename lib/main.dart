@@ -47,7 +47,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter OpenAI Chat',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.black),
       ),
       initialRoute: '/',
       routes: {
@@ -75,80 +75,108 @@ class HomePage extends StatelessWidget {
       appBar: AppBar(title: const Text('Menu')),
       drawer: const AppDrawer(),
       body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ElevatedButton.icon(
-              icon: const Icon(Icons.chat),
-              label: const Text('Go to Chat'),
-              onPressed: () {
-                Navigator.pushNamed(context, '/chat');
-              },
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.star),
-              label: const Text('Tirage 3 cartes conseil'),
-              onPressed: () {
-                Navigator.pushNamed(context, '/tirage3');
-              },
-            ),
-            // const SizedBox(height: 16),
-            // ElevatedButton.icon(
-            //   icon: const Icon(Icons.star),
-            //   label: const Text('Tirage 4 cartes prédictif'),
-            //   onPressed: () {
-            //     Navigator.pushNamed(context, '/tirage4');
-            //   },
-            // ),
-            // const SizedBox(height: 16),
-            // ElevatedButton.icon(
-            //   icon: const Icon(Icons.account_tree),
-            //   label: const Text('Tirage 6 cartes pyramide'),
-            //   onPressed: () {
-            //     Navigator.pushNamed(context, '/tirage6');
-            //   },
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.account_tree),
-              label: const Text('Natal Chart (SwEph)'),
-              onPressed: () {
-                Navigator.pushNamed(context, '/natal-sweph');
-              },
-            ), 
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.star),
-              label: const Text('Daily Chart Comparison'),
-              onPressed: () {
-                Navigator.pushNamed(context, '/daily-chart');
-              },
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.calculate),
-              label: const Text('Numerologie'),
-              onPressed: () {
-                Navigator.pushNamed(context, '/numerologie');
-              },
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.psychology),
-              label: const Text('RAG Demo - Test AI'),
-              onPressed: () {
-                Navigator.pushNamed(context, '/rag-demo');
-              },
-            ),
-            // const SizedBox(height: 16),
-            // ElevatedButton.icon(
-            //   icon: const Icon(Icons.star),
-            //   label: const Text('Carte du ciel (natal)'),
-            //   onPressed: () {
-            //     Navigator.pushNamed(context, '/natal');
-            //   },
-            // ),
-          ],
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Tarologie Section
+              const Text(
+                'Tarologie',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.star),
+                label: const Text('Les Trois Portes'),
+                onPressed: () {
+                  Navigator.pushNamed(context, '/tirage3');
+                },
+              ),
+              
+              const SizedBox(height: 32),
+              
+              // Astrologie Section
+              const Text(
+                'Astrologie',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.account_tree),
+                label: const Text('Natal Chart (SwEph)'),
+                onPressed: () {
+                  Navigator.pushNamed(context, '/natal-sweph');
+                },
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.star),
+                label: const Text('Daily Chart Comparison'),
+                onPressed: () {
+                  Navigator.pushNamed(context, '/daily-chart');
+                },
+              ),
+              
+              const SizedBox(height: 32),
+              
+              // Numérologie Section
+              const Text(
+                'Numérologie',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.calculate),
+                label: const Text('Numerologie'),
+                onPressed: () {
+                  Navigator.pushNamed(context, '/numerologie');
+                },
+              ),
+              
+              const SizedBox(height: 32),
+              
+              // Connexion OpenAI Section
+              const Text(
+                'Connexion OpenAI',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.chat),
+                label: const Text('Go to Chat'),
+                onPressed: () {
+                  Navigator.pushNamed(context, '/chat');
+                },
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.psychology),
+                label: const Text('RAG Demo - Test AI'),
+                onPressed: () {
+                  Navigator.pushNamed(context, '/rag-demo');
+                },
+              ),
+              
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
       ),
     );

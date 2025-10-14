@@ -25,42 +25,63 @@ class AppDrawer extends StatelessWidget {
           ),
           ListTile(
             leading: const Icon(Icons.home),
-            title: const Text('Accueil'),
+            dense: true,
+            title: const Text(
+              'Accueil',
+              style: TextStyle(fontSize: 12),
+            ),
             onTap: () {
               Navigator.pushReplacementNamed(context, '/');
             },
           ),
-          ListTile(
-            leading: const Icon(Icons.chat),
-            title: const Text('Chat with OpenAI'),
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/chat');
-            },
+          
+          const Divider(),
+          
+          // Tarologie Section
+          const Padding(
+            padding: EdgeInsets.only(left: 16, top: 8, bottom: 4),
+            child: Text(
+              'Tarologie',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
           ),
           ListTile(
             leading: const Icon(Icons.auto_awesome),
-            title: const Text('Tirage 3 cartes conseil'),
+            dense: true,
+            title: const Text(
+              'Les Trois Portes',
+              style: TextStyle(fontSize: 12),
+            ),
             onTap: () {
               Navigator.pushReplacementNamed(context, '/tirage3');
             },
           ),
-          // ListTile(
-          //   leading: const Icon(Icons.auto_awesome),
-          //   title: const Text('Tirage 4 cartes prédictif'),
-          //   onTap: () {
-          //     Navigator.pushReplacementNamed(context, '/tirage4');
-          //   },
-          // ),
-          // ListTile(
-          //   leading: const Icon(Icons.account_tree),
-          //   title: const Text('Tirage 6 cartes pyramide'),
-          //   onTap: () {
-          //     Navigator.pushReplacementNamed(context, '/tirage6');
-          //   },
-          // ),
+          
+          const Divider(),
+          
+          // Astrologie Section
+          const Padding(
+            padding: EdgeInsets.only(left: 16, top: 8, bottom: 4),
+            child: Text(
+              'Astrologie',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+          ),
           ListTile(
             leading: const Icon(Icons.stars),
-            title: const Text('Natal Chart (SwEph)'),
+            dense: true,
+            title: const Text(
+              'Natal Chart (SwEph)',
+              style: TextStyle(fontSize: 12),
+            ),
             onTap: () {
               Navigator.pop(context);
               Navigator.push(
@@ -73,14 +94,74 @@ class AppDrawer extends StatelessWidget {
           ),
           ListTile(
             leading: const Icon(Icons.compare),
-            title: const Text('Daily Chart Comparison'),
+            dense: true,
+            title: const Text(
+              'Daily Chart Comparison',
+              style: TextStyle(fontSize: 12),
+            ),
             onTap: () {
               Navigator.pushReplacementNamed(context, '/daily-chart');
             },
           ),
+          
+          const Divider(),
+          
+          // Numérologie Section
+          const Padding(
+            padding: EdgeInsets.only(left: 16, top: 8, bottom: 4),
+            child: Text(
+              'Numérologie',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+          ),
           ListTile(
+            dense: true,
+            leading: const Icon(Icons.list),
+            title: const Text(
+              'Numerologie',
+              style: TextStyle(fontSize: 12),
+            ),
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/numerologie');
+            },
+          ),
+          
+          const Divider(),
+          
+          // Connexion OpenAI Section
+          const Padding(
+            padding: EdgeInsets.only(left: 16, top: 8, bottom: 4),
+            child: Text(
+              'Connexion OpenAI',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+          ),
+          ListTile(
+            dense: true,
+            leading: const Icon(Icons.chat),
+            title: const Text(
+              'Go to Chat',
+              style: TextStyle(fontSize: 12),
+            ),
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/chat');
+            },
+          ),
+          ListTile(
+            dense: true,
             leading: const Icon(Icons.psychology),
-            title: const Text('Demo RAG - Questions IA'),
+            title: const Text(
+              'RAG Demo - Test AI',
+              style: TextStyle(fontSize: 12),
+            ),
             onTap: () {
               Navigator.pop(context);
               Navigator.push(
@@ -91,20 +172,6 @@ class AppDrawer extends StatelessWidget {
               );
             },
           ),
-          ListTile(
-            leading: const Icon(Icons.list),
-            title: const Text('Numerologie'),
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/numerologie');
-            },
-          ),
-          // ListTile(
-          //   leading: const Icon(Icons.star),
-          //   title: const Text('Thème natal'),
-          //   onTap: () {
-          //     Navigator.pushReplacementNamed(context, '/natal');
-          //   },
-          // ),
         ],
       ),
     );
