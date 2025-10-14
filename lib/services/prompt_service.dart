@@ -88,9 +88,10 @@ SIGNIFICATIONS SPÉCIFIQUES: $cardMeanings
 Analyse chaque carte selon sa position spécifique dans le tirage. Pour la première carte, concentre-toi sur les aspects positifs qui soutiennent la situation. Pour la deuxième, identifie les défis et obstacles basés sur les aspects négatifs. Pour la troisième, donne des conseils pratiques et actionables. Termine par une synthèse qui intègre les trois perspectives: atouts, défis, et plan d'action.""";
   }
 
-  /// Template prompt for RAG-based three card readings with customizable tone
+  /// Template prompt for RAG-based three card readings with customizable tone and optional bonus cards
   static String buildThreeCardRagPrompt({
     required List<String> drawnCards,
+    List<String>? bonusCards,
     String? customToneInstructions,
   }) {
     final baseToneInstructions = """✦ Structure attendue
@@ -129,7 +130,7 @@ Minimum : 1200 mots.
 
     final toneInstructions = customToneInstructions ?? baseToneInstructions;
 
-    return """Tu es un tarologue bienveillant et intuitif, écrivant dans le style Holistic Witch : une écriture vibrante, poétique et incarnée, qui parle à la conscience et au cœur.
+    var prompt = """Tu es un tarologue bienveillant et intuitif, écrivant dans le style Holistic Witch : une écriture vibrante, poétique et incarnée, qui parle à la conscience et au cœur.
 Ce tirage de 3 cartes n’est pas prédictif, mais symbolique et initiatique : chaque carte est une porte de conscience, un passage vers une compréhension plus profonde du moment que traverse le consultant.
 
 ✦ Tirage
@@ -137,19 +138,31 @@ Ce tirage de 3 cartes n’est pas prédictif, mais symbolique et initiatique : c
 - 2ème carte (obstacles/défis) : ${drawnCards[1]}
 - 3ème carte (conseils) : ${drawnCards[2]}
 
-$toneInstructions
-
 """;
+
+ if (bonusCards != null && bonusCards.isNotEmpty) {
+      prompt += "\n\nCartes bonus (conseils supplémentaires) : ${bonusCards.join(', ')}\n\n";
+    }
+    prompt += toneInstructions;
+
+    return prompt;
   }
 
   /// Template prompt for vector search (simpler, focused on retrieval)
-  static String buildThreeCardVectorSearchPrompt(List<String> drawnCards) {
-    return """Tu es un expert du tarot. Voici un tirage de 3 cartes :
+  static String buildThreeCardVectorSearchPrompt(List<String> drawnCards, {List<String>? bonusCards}) {
+    var prompt = """Tu es un expert du tarot. Voici un tirage de 3 cartes :
 - 1ère carte (aspects positifs) : ${drawnCards[0]}
 - 2ème carte (obstacles/défis) : ${drawnCards[1]}
-- 3ème carte (conseils) : ${drawnCards[2]}
+- 3ème carte (conseils) : ${drawnCards[2]}""";
 
-Réponds à la question de l'utilisateur en t'appuyant uniquement sur le contexte fourni et sur le rôle de chaque carte.""";
+    // Add bonus cards if provided
+    if (bonusCards != null && bonusCards.isNotEmpty) {
+      prompt += "\n\nCartes bonus (conseils supplémentaires) : ${bonusCards.join(', ')}";
+    }
+
+    prompt += "\n\nRéponds à la question de l'utilisateur en t'appuyant uniquement sur le contexte fourni et sur le rôle de chaque carte.";
+    
+    return prompt;
   }
 
   /// Template prompt for bonus card readings with RAG

@@ -98,6 +98,8 @@ import 'package:readmore/readmore.dart';
   String? bonusRagAnswer;
   String? bonusRagContext;
   String? bonusRagQuery;
+  // Store the last system prompt sent to RAG
+  String? lastBonusSystemPrompt;
   @override
   bool isBonusLoading = false;
 
@@ -225,16 +227,13 @@ import 'package:readmore/readmore.dart';
         bonusRagContext = null;
       });
       try {
-        // Use template for bonus card prompt
-        final systemPrompt = PromptService.buildBonusCardRagPrompt(
+        // Use vector search prompt that includes bonus cards
+        final vectorSearchPrompt = PromptService.buildThreeCardVectorSearchPrompt(drawnCards!, bonusCards: bonusCards!);
+        
+        // Use the same template but with bonus cards as additional advice
+        final finalSystemPrompt = PromptService.buildThreeCardRagPrompt(
           drawnCards: drawnCards!,
-          bonusCards: bonusCards!,
-          // You can pass custom tone instructions here if needed:
-          // customToneInstructions: """INSTRUCTIONS DE STYLE :
-          // - Adopte un style mystique et spirituel
-          // - Utilise des métaphores et un langage poétique
-          // - Connecte les cartes aux énergies cosmiques
-          // - Termine par une affirmation positive""",
+          bonusCards: bonusCards!, // Add bonus cards to the prompt
         );
 
         // Handle empty question with a default interpretation request
@@ -242,12 +241,12 @@ import 'package:readmore/readmore.dart';
           ? "Donne-moi une interprétation générale de ce tirage avec les cartes bonus."
           : question;
 
-        // For the vector search, concatenate the user question as well
-        final enrichedQuery = "$systemPrompt\n\nQuestion de l'utilisateur : $finalQuestion";
+        // Use the same enriched query structure as 3-card reading
+        final enrichedQuery = "$vectorSearchPrompt\n\nQuestion de l'utilisateur : $finalQuestion";
 
         final result = await ragService.askQuestion(
           enrichedQuery,
-          systemPrompt: systemPrompt,
+          systemPrompt: finalSystemPrompt,
           contextFilter: 'tarologie',
         );
         if (mounted) {
@@ -256,6 +255,7 @@ import 'package:readmore/readmore.dart';
             bonusRagContext = result['context_used'] as String?;
             // Store the actual search query for display
             bonusRagQuery = enrichedQuery;
+            lastBonusSystemPrompt = finalSystemPrompt;
           });
         }
 // Removed duplicate local declaration of bonusRagQuery; now only class-level field is used
@@ -551,12 +551,12 @@ import 'package:readmore/readmore.dart';
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (bonusRagQuery != null && bonusRagQuery!.isNotEmpty) ...[
+                        if (lastBonusSystemPrompt != null && lastBonusSystemPrompt!.isNotEmpty) ...[
                           const SelectableText('Prompt envoyé à la recherche (bonus) :', style: TextStyle(fontWeight: FontWeight.bold)),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             child: ReadMoreText(
-                              bonusRagQuery!,
+                              lastBonusSystemPrompt!,
                               trimLines: 3,
                               colorClickableText: Colors.blue,
                               trimMode: TrimMode.Line,
