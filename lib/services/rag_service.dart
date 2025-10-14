@@ -280,7 +280,7 @@ class RagService {
       }
       
       print('🌲 Sending Pinecone request to: $_pineconeHost/query');
-      print('🌲 Request body keys: ${requestBody.keys.toList()}');
+      // print('🌲 Request body keys: ${requestBody.keys.toList()}');
       
       final response = await http.post(
         Uri.parse('$_pineconeHost/query'),
@@ -291,19 +291,19 @@ class RagService {
         body: jsonEncode(requestBody),
       );
 
-      print('🌲 Pinecone response status: ${response.statusCode}');
+      // print('🌲 Pinecone response status: ${response.statusCode}');
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        print('🌲 Pinecone response: ${jsonEncode(data)}');
+        // print('🌲 Pinecone response: ${jsonEncode(data)}');
         
         final matches = data['matches'] as List;
-        print('🎯 Total matches found: ${matches.length}');
+        // print('🎯 Total matches found: ${matches.length}');
         
         // Log each match details
         for (int i = 0; i < matches.length; i++) {
           final match = matches[i];
-          print('🎯 Match $i: score=${match['score']}, id=${match['id']}, metadata=${match['metadata']}');
+          // print('🎯 Match $i: score=${match['score']}, id=${match['id']}, metadata=${match['metadata']}');
         }
         
         // Filter by score threshold
@@ -311,10 +311,10 @@ class RagService {
             .where((match) => (match['score'] as double) >= scoreThreshold)
             .toList();
             
-        print('✅ Filtered matches (score >= $scoreThreshold): ${filteredMatches.length}');
+        // print('✅ Filtered matches (score >= $scoreThreshold): ${filteredMatches.length}');
         for (int i = 0; i < filteredMatches.length; i++) {
           final match = filteredMatches[i];
-          print('✅ Filtered match $i: score=${match['score']}, id=${match['id']}');
+          // print('✅ Filtered match $i: score=${match['score']}, id=${match['id']}');
         }
 
         return filteredMatches.cast<Map<String, dynamic>>();
@@ -331,7 +331,7 @@ class RagService {
   /// Retrieve content from Supabase based on IDs
   Future<List<Map<String, dynamic>>> retrieveContent(List<String> contentIds) async {
     try {
-      print('📚 Retrieving content for ${contentIds.length} IDs: $contentIds');
+      // print('📚 Retrieving content for ${contentIds.length} IDs: $contentIds');
       
       // First, let's try to query with different possible field names
       final possibleFields = ['id', 'chunk_id', 'doc_id'];
@@ -345,7 +345,7 @@ class RagService {
           final idsFilter = contentIds.map((id) => '$field.eq.$id').join(',');
           final url = '$_supabaseUrl/rest/v1/document_chunks?or=($idsFilter)&select=*';
           
-          print('📚 Trying Supabase query with field "$field": $url');
+          // print('📚 Trying Supabase query with field "$field": $url');
           
           final response = await http.get(
             Uri.parse(url),
@@ -356,15 +356,15 @@ class RagService {
             },
           );
 
-          print('📚 Supabase response status for field "$field": ${response.statusCode}');
+          // print('📚 Supabase response status for field "$field": ${response.statusCode}');
           
           if (response.statusCode == 200) {
             final data = jsonDecode(response.body) as List;
-            print('📚 Retrieved ${data.length} document_chunks using field "$field"');
+            // print('📚 Retrieved ${data.length} document_chunks using field "$field"');
             
             if (data.isNotEmpty) {
               results = data.cast<Map<String, dynamic>>();
-              print('📚 Success! Using field "$field" for content retrieval');
+              // print('📚 Success! Using field "$field" for content retrieval');
               break;
             }
           } else {
@@ -391,7 +391,7 @@ class RagService {
           if (response.statusCode == 200) {
             final data = jsonDecode(response.body) as List;
             if (data.isNotEmpty) {
-              print('📚 Sample document structure: ${data[0].keys.toList()}');
+              // print('📚 Sample document structure: ${data[0].keys.toList()}');
             }
           }
         } catch (e) {
@@ -430,7 +430,7 @@ class RagService {
         contextFilter: contextFilter,
       );
 
-      print('Found ${similarVectors.length} similar vectors');
+      // print('Found ${similarVectors.length} similar vectors');
 
       if (similarVectors.isEmpty) {
         return {
@@ -452,8 +452,8 @@ class RagService {
           .cast<String>()
           .toList();
 
-      print('📄 Extracted content IDs: $contentIds');
-      print('📄 Sample metadata fields: ${similarVectors.isNotEmpty ? similarVectors[0]['metadata']?.keys.toList() : 'none'}');
+      // print('📄 Extracted content IDs: $contentIds');
+      // print('📄 Sample metadata fields: ${similarVectors.isNotEmpty ? similarVectors[0]['metadata']?.keys.toList() : 'none'}');
       
       if (contentIds.isEmpty) {
         print('⚠️ No content IDs found in vector metadata');
@@ -511,10 +511,10 @@ class RagService {
 
     final context = contextParts.join('\n\n---\n\n');
       
-      print('📝 Context length: ${context.length} characters');
-      print('📝 Context preview: ${context.length > 200 ? "${context.substring(0, 200)}..." : context}');
+      // print('📝 Context length: ${context.length} characters');
+      // print('📝 Context preview: ${context.length > 200 ? "${context.substring(0, 200)}..." : context}');
 
-      print('✅ RAG query completed with ${enrichedResults.length} results');
+      // print('✅ RAG query completed with ${enrichedResults.length} results');
 
       return {
         'query': query,
@@ -540,7 +540,7 @@ class RagService {
     String? systemPrompt,
   }) async {
     try {
-      print('🤖 Generating AI response for query: "$query"');
+      // print('🤖 Generating AI response for query: "$query"');
       print('🤖 Context length: ${context.length} characters');
 
       final defaultSystemPrompt = '''
@@ -549,12 +549,16 @@ class RagService {
       ''';
 
       final finalSystemPrompt = systemPrompt ?? defaultSystemPrompt;
-      print('🤖 System prompt length: ${finalSystemPrompt.length} characters');
+      // print('🤖 System prompt length: ${finalSystemPrompt.length} characters');
 
       // Construct user message with context + query
       final userMessage = context.isNotEmpty
           ? 'Contexte disponible:\n$context\n\nQuestion: $query'
           : query;
+
+
+       print('🤖 System prompt: "$finalSystemPrompt"');
+      //  print('🤖 User message: "$userMessage"');
 
       final requestBody = {
         'model': dotenv.env['OPENAI_CHAT_MODEL'] ?? dotenv.env['OPENAI_FALLBACK_CHAT_MODEL'],
@@ -572,10 +576,10 @@ class RagService {
         'max_completion_tokens': 1500,
       };
       
-      print('🤖 Sending request to OpenAI chat API');
-      print('🤖 Request body preview: model=${requestBody['model']}, messages count=${(requestBody['messages'] as List).length}');
-      print('🤖 System message length: ${(requestBody['messages'] as List)[0]['content'].length}');
-      print('🤖 User message length: ${(requestBody['messages'] as List)[1]['content'].length}');
+      // print('🤖 Sending request to OpenAI chat API');
+      // print('🤖 Request body preview: model=${requestBody['model']}, messages count=${(requestBody['messages'] as List).length}');
+      // print('🤖 System message length: ${(requestBody['messages'] as List)[0]['content'].length}');
+      // print('🤖 User message length: ${(requestBody['messages'] as List)[1]['content'].length}');
 
       final response = await http.post(
         Uri.parse('${dotenv.env['OPENAI_BASE_URL']}/chat/completions'),
@@ -586,7 +590,7 @@ class RagService {
         body: jsonEncode(requestBody),
       );
 
-      print('🤖 OpenAI chat response status: ${response.statusCode}');
+      // print('🤖 OpenAI chat response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
