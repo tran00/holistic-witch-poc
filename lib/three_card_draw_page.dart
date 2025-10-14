@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'services/tarot_service.dart';
-import 'three_card_rag_helper.dart';
 import 'mixins/tarot_page_mixin.dart';
 import 'widgets/app_drawer.dart';
 import 'rag_service_singleton.dart';
@@ -21,7 +20,6 @@ import 'services/prompt_service.dart';
     if (drawnCards == null || drawnCards!.length != 3) return;
     if (!mounted) return;
     final question = questionController.text.trim();
-    if (question.isEmpty) return;
     setState(() {
       isLoading = true;
       ragAnswer = null;
@@ -29,9 +27,15 @@ import 'services/prompt_service.dart';
       lastSystemPrompt = null;
     });
     try {
-      final prompt = PromptService.buildThreeCardCustomPrompt(question, drawnCards!);
+      final prompt = PromptService.buildThreeCardCustomPrompt(
+        question.isEmpty ? "Donne-moi une interprétation générale de ce tirage de trois cartes." : question, 
+        drawnCards!
+      );
       // Direct OpenAI chat completion, no RAG, no Pinecone
-      final answer = await _askOpenAIWithPromptOnly(question, prompt);
+      final answer = await _askOpenAIWithPromptOnly(
+        question.isEmpty ? "Interprétation générale" : question, 
+        prompt
+      );
       if (mounted) {
         setState(() {
           ragAnswer = answer;
@@ -149,7 +153,6 @@ import 'services/prompt_service.dart';
       if (drawnCards == null || drawnCards!.length != 3) return;
       if (!mounted) return;
       final userQuestion = questionController.text.trim();
-      if (userQuestion.isEmpty) return;
       setState(() {
         isLoading = true;
         ragAnswer = null;
@@ -157,29 +160,43 @@ import 'services/prompt_service.dart';
         lastSystemPrompt = null;
       });
       try {
-        // System prompt: mention the three cards and their roles, but no detailed meanings
-        final systemPrompt = "Tu es un expert du tarot. Voici un tirage de 3 cartes :\n"
-          "- 1ère carte (aspects positifs) : ${drawnCards![0]}\n"
-          "- 2ème carte (obstacles/défis) : ${drawnCards![1]}\n"
-          "- 3ème carte (conseils) : ${drawnCards![2]}\n"
-          "Réponds à la question de l'utilisateur en t'appuyant uniquement sur le contexte fourni et sur le rôle de chaque carte.";
-        // Enrich the vector search query with the system prompt and user question
-        final enrichedQuery = "$systemPrompt\n\nQuestion de l'utilisateur : $userQuestion";
+        // Use template for vector search prompt (simpler, focused on retrieval)
+        final vectorSearchPrompt = PromptService.buildThreeCardVectorSearchPrompt(drawnCards!);
+        
+        // Use template for final OpenAI response prompt (includes tone instructions)
+        final finalSystemPrompt = PromptService.buildThreeCardRagPrompt(
+          drawnCards: drawnCards!,
+          // You can pass custom tone instructions here if needed:
+          // customToneInstructions: """INSTRUCTIONS DE STYLE :
+          // - Adopte un style mystique et spirituel
+          // - Utilise des métaphores et un langage poétique
+          // - Connecte les cartes aux énergies cosmiques
+          // - Termine par une affirmation positive""",
+        );
+        
+        // Handle empty question with a default interpretation request
+        final finalQuestion = userQuestion.isEmpty 
+          ? "Donne-moi une interprétation générale de ce tirage de trois cartes."
+          : userQuestion;
+        
+        // Enrich the vector search query with the vector search prompt and user question
+        final enrichedQuery = "$vectorSearchPrompt\n\nQuestion de l'utilisateur : $finalQuestion";
         // Debug: print the query and prompt
         // ignore: avoid_print
         print('RAG QUERY DEBUG: question = "$enrichedQuery"');
         // ignore: avoid_print
-        print('RAG QUERY DEBUG: systemPrompt = "$systemPrompt"');
-        // Pass the enriched query as the question for vector search
-        final result = await ThreeCardRagHelper.askRagForThreeCards(
-          question: enrichedQuery,
-          drawnCards: drawnCards!,
+        print('RAG QUERY DEBUG: finalSystemPrompt = "$finalSystemPrompt"');
+        // Pass the enriched query for vector search, but use finalSystemPrompt for OpenAI
+        final result = await ragService.askQuestion(
+          enrichedQuery,
+          systemPrompt: finalSystemPrompt,
+          contextFilter: 'tarologie',
         );
         if (mounted) {
           setState(() {
             ragAnswer = result['answer'] as String?;
             ragContext = result['context_used'] as String?;
-            lastSystemPrompt = systemPrompt;
+            lastSystemPrompt = finalSystemPrompt;
           });
         }
       } catch (e) {
@@ -201,26 +218,31 @@ import 'services/prompt_service.dart';
       if (drawnCards == null || drawnCards!.length != 3 || bonusCards == null || bonusCards!.length != 2) return;
       if (!mounted) return;
       final question = questionController.text.trim();
-      if (question.isEmpty) return;
       setState(() {
         isBonusLoading = true;
         bonusRagAnswer = null;
         bonusRagContext = null;
       });
       try {
-        // Build the base prompt as for the 3-card draw
-        final basePrompt = "Tu es un expert du tarot. Voici un tirage de 3 cartes :\n"
-          "- 1ère carte (aspects positifs) : ${drawnCards![0]}\n"
-          "- 2ème carte (obstacles/défis) : ${drawnCards![1]}\n"
-          "- 3ème carte (conseils) : ${drawnCards![2]}\n";
+        // Use template for bonus card prompt
+        final systemPrompt = PromptService.buildBonusCardRagPrompt(
+          drawnCards: drawnCards!,
+          bonusCards: bonusCards!,
+          // You can pass custom tone instructions here if needed:
+          // customToneInstructions: """INSTRUCTIONS DE STYLE :
+          // - Adopte un style mystique et spirituel
+          // - Utilise des métaphores et un langage poétique
+          // - Connecte les cartes aux énergies cosmiques
+          // - Termine par une affirmation positive""",
+        );
 
-        // Add the two bonus cards as additional advice (CONSEILS)
-        final bonusAdvice = "\nCONSEILS (actions à entreprendre) : ${bonusCards![0]}, ${bonusCards![1]}";
-
-        final systemPrompt = "$basePrompt$bonusAdvice\n\nRéponds à la question de l'utilisateur en expliquant le rôle de chaque carte dans le contexte de la question, puis donne une synthèse/conseil global.";
+        // Handle empty question with a default interpretation request
+        final finalQuestion = question.isEmpty 
+          ? "Donne-moi une interprétation générale de ce tirage avec les cartes bonus."
+          : question;
 
         // For the vector search, concatenate the user question as well
-        final enrichedQuery = "$systemPrompt\n\nQuestion de l'utilisateur : $question";
+        final enrichedQuery = "$systemPrompt\n\nQuestion de l'utilisateur : $finalQuestion";
 
         final result = await ragService.askQuestion(
           enrichedQuery,
@@ -254,7 +276,7 @@ import 'services/prompt_service.dart';
     @override
     Widget build(BuildContext context) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Tirage 3 cartes conseil')),
+        appBar: AppBar(title: const Text('Tirage « Les Trois Portes »')),
         drawer: const AppDrawer(),
         body: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -265,7 +287,7 @@ import 'services/prompt_service.dart';
                 TextField(
                   controller: questionController,
                   decoration: const InputDecoration(
-                    labelText: 'Quel conseil demander ?',
+                    labelText: 'Question (optionnelle)',
                     border: OutlineInputBorder(),
                   ),
                 ),
