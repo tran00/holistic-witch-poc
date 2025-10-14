@@ -4,6 +4,7 @@ import 'mixins/tarot_page_mixin.dart';
 import 'widgets/app_drawer.dart';
 import 'rag_service_singleton.dart';
 import 'services/prompt_service.dart';
+import 'package:readmore/readmore.dart';
 // import 'widgets/reveal_tarot_card.dart'; // Add this if missing
 
 // ...existing code...
@@ -392,11 +393,19 @@ import 'services/prompt_service.dart';
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (lastSystemPrompt != null) ...[
-                          const SelectableText('Prompt envoyé à l’IA :', style: TextStyle(fontWeight: FontWeight.bold)),
+                         if (lastSystemPrompt != null) ...[
+                          const SelectableText('Prompt envoyé à l\'IA :', style: TextStyle(fontWeight: FontWeight.bold)),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            child: SelectableText(lastSystemPrompt!),
+                            child: ReadMoreText(
+                              lastSystemPrompt!,
+                              trimLines: 3,
+                              colorClickableText: Colors.blue,
+                              trimMode: TrimMode.Line,
+                              trimCollapsedText: '\n\nVoir plus',
+                              trimExpandedText: '\n\nVoir moins',
+                              style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+                            ),
                           ),
                           const SizedBox(height: 16),
                         ],
@@ -546,7 +555,15 @@ import 'services/prompt_service.dart';
                           const SelectableText('Prompt envoyé à la recherche (bonus) :', style: TextStyle(fontWeight: FontWeight.bold)),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            child: SelectableText(bonusRagQuery!),
+                            child: ReadMoreText(
+                              bonusRagQuery!,
+                              trimLines: 3,
+                              colorClickableText: Colors.blue,
+                              trimMode: TrimMode.Line,
+                              trimCollapsedText: '\n\nVoir plus',
+                              trimExpandedText: '\n\nVoir moins',
+                              style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+                            ),
                           ),
                           const SizedBox(height: 16),
                         ],
