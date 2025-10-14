@@ -4,7 +4,7 @@ import 'mixins/tarot_page_mixin.dart';
 import 'widgets/app_drawer.dart';
 import 'rag_service_singleton.dart';
 import 'services/prompt_service.dart';
-import 'package:readmore/readmore.dart';
+import 'widgets/selectable_read_more.dart';
 // import 'widgets/reveal_tarot_card.dart'; // Add this if missing
 
 // ...existing code...
@@ -397,14 +397,14 @@ import 'package:readmore/readmore.dart';
                           const SelectableText('Prompt envoyé à l\'IA :', style: TextStyle(fontWeight: FontWeight.bold)),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            child: ReadMoreText(
-                              lastSystemPrompt!,
+                            child: SelectableReadMoreText(
+                              text: lastSystemPrompt!,
                               trimLines: 3,
                               colorClickableText: Colors.blue,
-                              trimMode: TrimMode.Line,
-                              trimCollapsedText: '\n\nVoir plus',
-                              trimExpandedText: '\n\nVoir moins',
+                              trimCollapsedText: 'Voir plus',
+                              trimExpandedText: 'Voir moins',
                               style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+                              linkFontSize: 12,
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -548,6 +548,8 @@ import 'package:readmore/readmore.dart';
                       child: CircularProgressIndicator(),
                     ),
                   if (bonusRagAnswer != null)
+                    const SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -555,14 +557,14 @@ import 'package:readmore/readmore.dart';
                           const SelectableText('Prompt envoyé à la recherche (bonus) :', style: TextStyle(fontWeight: FontWeight.bold)),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            child: ReadMoreText(
-                              lastBonusSystemPrompt!,
+                            child: SelectableReadMoreText(
+                              text: lastBonusSystemPrompt!,
                               trimLines: 3,
                               colorClickableText: Colors.blue,
-                              trimMode: TrimMode.Line,
-                              trimCollapsedText: '\n\nVoir plus',
-                              trimExpandedText: '\n\nVoir moins',
+                              trimCollapsedText: 'Voir plus',
+                              trimExpandedText: 'Voir moins',
                               style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+                              linkFontSize: 12,
                             ),
                           ),
                           const SizedBox(height: 16),
