@@ -7,6 +7,7 @@ import 'rag_service_singleton.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'services/numerology_service.dart';
 import 'services/numerology_descriptions_service.dart';
+import 'services/numerology_prompt_service.dart';
 
 class NumerologiePage extends StatefulWidget {
   const NumerologiePage({super.key});
@@ -54,6 +55,12 @@ class _NumerologiePageState extends State<NumerologiePage> {
   };
 
   late final OpenAIClient _openAI;
+
+  // RAG-specific state variables
+  String? ragAnswer;
+  String? ragContext;
+  String? lastSystemPrompt;
+  bool isRagLoading = false;
 
   @override
   void initState() {
@@ -151,6 +158,83 @@ class _NumerologiePageState extends State<NumerologiePage> {
 
   String _createPersonalPrompt(String analysis, String name) {
     return "En tant qu'expert en numérologie, $analysis pour $name. Tu t'adresses à l'utilisateur de manière directe et personnelle. Donne une interprétation détaillée en utilisant \"vous\" ou \"tu\".";
+  }
+
+  /// Create a numerology prompt using the prompt service
+  String _createNumerologyRagPrompt(int number, String analysisType, String name, String birthDate) {
+    return NumerologyPromptService.buildNumerologyRagPrompt(
+      number: number,
+      numberType: NumerologyPromptService.getNumerologyTypeName(analysisType),
+      name: name,
+      birthDate: birthDate,
+    );
+  }
+
+  /// RAG-based numerology analysis function (follows three-card page pattern)
+  Future<void> _askRag(int number, String analysisType, String name, String birthDate) async {
+    if (!mounted) return;
+    
+    final name = "${_firstNameController.text} ${_lastNameController.text}";
+    final birthDate = _birthDateController.text;
+    
+    setState(() {
+      isRagLoading = true;
+      ragAnswer = null;
+      ragContext = null;
+      lastSystemPrompt = null;
+    });
+    
+    try {
+      // Use template for vector search prompt (simpler, focused on retrieval)
+      final vectorSearchPrompt = NumerologyPromptService.buildNumerologyVectorSearchPrompt(
+        number: number,
+        numberType: analysisType,
+      );
+      
+      // Use template for final OpenAI response prompt (includes tone instructions)
+      final finalSystemPrompt = NumerologyPromptService.buildNumerologyRagPrompt(
+        number: number,
+        numberType: NumerologyPromptService.getNumerologyTypeName(analysisType),
+        name: name,
+        birthDate: birthDate,
+      );
+      
+      // Enrich the vector search query
+      // final question = customQuestion ?? "Analyse numérologique demandée pour $name.";
+      // final enrichedQuery = "$vectorSearchPrompt\n\n$question";
+      
+      // Debug: print the query and prompt
+      // print('NUMEROLOGY RAG QUERY DEBUG: question = "$vectorSearchPrompt"');
+      print('NUMEROLOGY RAG SYSTEM PROMPT DEBUG: prompt = "$finalSystemPrompt"');
+
+      // Use the same pattern as three-card page: askQuestion with systemPrompt and contextFilter
+      final result = await ragService.askQuestion(
+        vectorSearchPrompt,
+        systemPrompt: finalSystemPrompt,
+        contextFilter: 'numerologie',
+      );
+      
+      if (mounted) {
+        setState(() {
+          ragAnswer = result['answer'] as String?;
+          ragContext = result['context_used'] as String?;
+          lastSystemPrompt = finalSystemPrompt;
+        });
+      }
+    } catch (e) {
+      print('Error in numerology RAG: $e');
+      if (mounted) {
+        setState(() {
+          ragAnswer = 'Erreur lors de l\'analyse: $e';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          isRagLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -353,13 +437,9 @@ class _NumerologiePageState extends State<NumerologiePage> {
     final sections = [
       // Basic analyses
       NumerologyAnalysisSection(
-        buttonText: 'demander à openAI votre chemin de vie',
+        buttonText: 'Le Chemin de Vie',
         isLoading: analyses['chemin']!.isLoading,
-        onPressed: nombreDeVie != null ? () => _performAnalysis(
-          'chemin', nombreDeVie!, 
-          _createPersonalPrompt("analyse le chemin de vie numéro $nombreDeVie", "$name, né(e) le ${_birthDateController.text}"),
-          "chemin de vie"
-        ) : null,
+        onPressed: nombreDeVie != null ? () => _askRag(nombreDeVie!, 'chemin', name, _birthDateController.text) : null,
         prompt: analyses['chemin']!.prompt,
         answer: analyses['chemin']!.answer,
       ),
@@ -367,11 +447,7 @@ class _NumerologiePageState extends State<NumerologiePage> {
       NumerologyAnalysisSection(
         buttonText: 'nombre d\'expression',
         isLoading: analyses['expression']!.isLoading,
-        onPressed: nombreExpression != null ? () => _performAnalysis(
-          'expression', nombreExpression!, 
-          _createPersonalPrompt("analyse le nombre d'expression $nombreExpression", name),
-          "nombre d'expression"
-        ) : null,
+        onPressed: nombreExpression != null ? () => _askRag(nombreExpression!, 'expression', name, _birthDateController.text) : null,
         prompt: analyses['expression']!.prompt,
         answer: analyses['expression']!.answer,
       ),
