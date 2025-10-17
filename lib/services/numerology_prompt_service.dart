@@ -1,5 +1,7 @@
 // lib/services/numerology_prompt_service.dart
 
+import 'tone_service.dart';
+
 class NumerologyPromptService {
   /// Template prompt for RAG-based numerology analysis with customizable tone
   static String buildNumerologyRagPrompt({
@@ -9,7 +11,7 @@ class NumerologyPromptService {
     required String birthDate,
     String? customToneInstructions,
   }) {
-    final baseToneInstructions = customToneInstructions ?? _getBaseToneInstructions(numberType);
+    final baseToneInstructions = customToneInstructions ?? ToneService.holisticWitchTone + "\n" + _getBaseToneInstructions(numberType);
     
     // Replace placeholders with actual values
     final processedInstructions = baseToneInstructions

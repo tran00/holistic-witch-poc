@@ -170,6 +170,7 @@ class _NumerologiePageState extends State<NumerologiePage> {
     );
   }
 
+  // ===========================================================================================================
   /// RAG-based numerology analysis function (follows three-card page pattern)
   Future<void> _askRag(int number, String analysisType, String name, String birthDate) async {
     if (!mounted) return;
@@ -182,6 +183,10 @@ class _NumerologiePageState extends State<NumerologiePage> {
       ragAnswer = null;
       ragContext = null;
       lastSystemPrompt = null;
+      
+      // IMPORTANT: Also update the specific analysis state
+      analyses[analysisType]!.isLoading = true;
+      analyses[analysisType]!.answer = null;
     });
     
     try {
@@ -219,6 +224,10 @@ class _NumerologiePageState extends State<NumerologiePage> {
           ragAnswer = result['answer'] as String?;
           ragContext = result['context_used'] as String?;
           lastSystemPrompt = finalSystemPrompt;
+          
+          // IMPORTANT: Also update the specific analysis state
+          analyses[analysisType]!.answer = result['answer'] as String?;
+          analyses[analysisType]!.prompt = finalSystemPrompt;
         });
       }
     } catch (e) {
@@ -226,12 +235,18 @@ class _NumerologiePageState extends State<NumerologiePage> {
       if (mounted) {
         setState(() {
           ragAnswer = 'Erreur lors de l\'analyse: $e';
+          
+          // IMPORTANT: Also update the specific analysis state
+          analyses[analysisType]!.answer = 'Erreur lors de l\'analyse: $e';
         });
       }
     } finally {
       if (mounted) {
         setState(() {
           isRagLoading = false;
+          
+          // IMPORTANT: Also update the specific analysis state
+          analyses[analysisType]!.isLoading = false;
         });
       }
     }
@@ -339,9 +354,9 @@ class _NumerologiePageState extends State<NumerologiePage> {
       children: [
         // Basic numbers
         SelectableText('Nombre chemin de vie : $nombreDeVie', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        SelectableText('Nombre intime : $nombreIntime', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        // SelectableText('Nombre intime : $nombreIntime', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         SelectableText('Nombre année personnelle : $nombreAnneePersonnelle', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        SelectableText('Numéro de perception : ${nombrePerception ?? 0}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        // SelectableText('Numéro de perception : ${nombrePerception ?? 0}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         
         const SizedBox(height: 16),
         
@@ -452,17 +467,17 @@ class _NumerologiePageState extends State<NumerologiePage> {
         answer: analyses['expression']!.answer,
       ),
       
-      NumerologyAnalysisSection(
-        buttonText: 'nombre intime',
-        isLoading: analyses['intime']!.isLoading,
-        onPressed: nombreIntime != null ? () => _performAnalysis(
-          'intime', nombreIntime!, 
-          _createPersonalPrompt("analyse le nombre intime $nombreIntime", name),
-          "nombre intime"
-        ) : null,
-        prompt: analyses['intime']!.prompt,
-        answer: analyses['intime']!.answer,
-      ),
+      // NumerologyAnalysisSection(
+      //   buttonText: 'nombre intime',
+      //   isLoading: analyses['intime']!.isLoading,
+      //   onPressed: nombreIntime != null ? () => _performAnalysis(
+      //     'intime', nombreIntime!, 
+      //     _createPersonalPrompt("analyse le nombre intime $nombreIntime", name),
+      //     "nombre intime"
+      //   ) : null,
+      //   prompt: analyses['intime']!.prompt,
+      //   answer: analyses['intime']!.answer,
+      // ),
       
       NumerologyAnalysisSection(
         buttonText: 'année personnelle',
