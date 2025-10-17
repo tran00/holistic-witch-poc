@@ -1,5 +1,6 @@
 // lib/services/three_card_prompt_service.dart
 import 'tarot_service.dart';
+import 'tone_service.dart';
 
 class ThreeCardPromptService {
   static String buildThreeCardCustomPrompt(String question, List<String> drawnCards) {
@@ -90,7 +91,9 @@ Analyse chaque carte selon sa position spécifique dans le tirage. Pour la premi
     List<String>? bonusCards,
     String? customToneInstructions,
   }) {
-    final baseToneInstructions = """✦ Structure attendue
+    final baseToneInstructions = """
+    
+    ✦ Structure attendue
 
 ① Ouverture — Le Souffle du Tirage
 Présente le tirage comme un voyage intérieur : trois portes, trois passages, trois moments de conscience.
@@ -126,7 +129,11 @@ Minimum : 1200 mots.
 
     final toneInstructions = customToneInstructions ?? baseToneInstructions;
 
-    var prompt = """Tu es un tarologue bienveillant et intuitif, écrivant dans le style Holistic Witch : une écriture vibrante, poétique et incarnée, qui parle à la conscience et au cœur.
+    //  Tu es un tarologue bienveillant et intuitif, écrivant dans le style Holistic Witch : une écriture vibrante, poétique et incarnée, qui parle à la conscience et au cœur.
+
+    var prompt = """${ToneService.holisticWitchTone}
+    
+    Tu es un tarologue.
 Ce tirage de 3 cartes n'est pas prédictif, mais symbolique et initiatique : chaque carte est une porte de conscience, un passage vers une compréhension plus profonde du moment que traverse le consultant.
 
 ✦ Tirage

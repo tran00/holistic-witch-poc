@@ -367,14 +367,14 @@ import 'widgets/selectable_read_more.dart';
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      ElevatedButton(
-                        onPressed: isLoading ? null : askOpenAICustom,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
-                        ),
-                        child: const Text('OpenAI custom'),
-                      ),
+                      // ElevatedButton(
+                      //   onPressed: isLoading ? null : askOpenAICustom,
+                      //   style: ElevatedButton.styleFrom(
+                      //     backgroundColor: Colors.blue,
+                      //     foregroundColor: Colors.white,
+                      //   ),
+                      //   child: const Text('OpenAI custom'),
+                      // ),
                       const SizedBox(width: 16),
                       ElevatedButton(
                         onPressed: isLoading ? null : askRag,
@@ -394,19 +394,19 @@ import 'widgets/selectable_read_more.dart';
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                          if (lastSystemPrompt != null) ...[
-                          const SelectableText('Prompt envoyé à l\'IA :', style: TextStyle(fontWeight: FontWeight.bold)),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            child: SelectableReadMoreText(
-                              text: lastSystemPrompt!,
-                              trimLines: 3,
-                              colorClickableText: Colors.blue,
-                              trimCollapsedText: 'Voir plus',
-                              trimExpandedText: 'Voir moins',
-                              style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
-                              linkFontSize: 12,
-                            ),
-                          ),
+                          // const SelectableText('Prompt envoyé à l\'IA :', style: TextStyle(fontWeight: FontWeight.bold)),
+                          // Padding(
+                          //   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          //   child: SelectableReadMoreText(
+                          //     text: lastSystemPrompt!,
+                          //     trimLines: 3,
+                          //     colorClickableText: Colors.blue,
+                          //     trimCollapsedText: 'Voir plus',
+                          //     trimExpandedText: 'Voir moins',
+                          //     style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+                          //     linkFontSize: 12,
+                          //   ),
+                          // ),
                           const SizedBox(height: 16),
                         ],
                         const SelectableText('Réponse IA :', style: TextStyle(fontWeight: FontWeight.bold)),
